@@ -7,7 +7,9 @@ Featherlight benchmark framework (only one file!) for performance measurement wi
 
 === How lightweight is it?
 
-There is only one source file "Test.Tasty.Bench", less than 450 lines, and no external dependencies except [@tasty@](http://hackage.haskell.org/package/tasty). So if you already depend on @tasty@ for a test suite, there
+There is only one source file "Test.Tasty.Bench" and no external dependencies
+except [@tasty@](http://hackage.haskell.org/package/tasty).
+So if you already depend on @tasty@ for a test suite, there
 is nothing else to install.
 
 Compare this to @criterion@ (10+ modules, 50+ dependencies) and @gauge@ (40+ modules, depends on @basement@ and @vector@).
@@ -118,10 +120,8 @@ Use @--help@ to list command-line options.
   to [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns)
   for details.
 
-[@--plain@]:
-  Produce machine-readable output:
-  @(mean in picoseconds, standard deviation in picoseconds)@.
-  This is handy for consumption by other @tasty@ ingredients.
+[@--csv@]:
+  File to write results in CSV format. If specified, suppresses console output.
 
 [@-t@, @--timeout@]:
   This is a standard @tasty@ option, setting timeout for individual benchmarks
@@ -139,6 +139,10 @@ Use @--help@ to list command-line options.
 
 -}
 
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Test.Tasty.Bench
   (
   -- * Running 'Benchmark'
@@ -154,14 +158,17 @@ module Test.Tasty.Bench
   , whnfIO
   , nfAppIO
   , whnfAppIO
+  -- * CSV ingredient
+  , csvReporter
   ) where
 
 import Control.Applicative
 import Control.DeepSeq
 import Control.Exception
+import Control.Monad
 import Data.Data (Typeable)
 import Data.Int
-import Data.Monoid
+import Data.Monoid ()
 import Data.Proxy
 import System.CPUTime
 import System.Mem
@@ -171,16 +178,10 @@ import Test.Tasty.Options
 import Test.Tasty.Providers
 import Text.Printf
 import Test.Tasty.Runners
-
-newtype PlainFormat = PlainFormat { unPlainFormat :: Bool }
-  deriving (Eq, Ord, Show, Typeable)
-
-instance IsOption PlainFormat where
-  defaultValue = PlainFormat False
-  parseValue = fmap PlainFormat . safeReadBool
-  optionName = pure "plain"
-  optionHelp = pure "Produce machine-readable output: (mean in picoseconds, standard deviation in picoseconds). This is handy for consumption by other tasty ingredients."
-  optionCLParser = mkFlagCLParser mempty (PlainFormat True)
+import Test.Tasty.Ingredients
+import Test.Tasty.Ingredients.ConsoleReporter
+import System.IO
+import Data.List (intercalate)
 
 newtype RelStDev = RelStDev { unRelStDev :: Double }
   deriving (Eq, Ord, Show, Typeable)
@@ -275,7 +276,7 @@ measureTimeUntil timeout targetRelStDev b = do
         else go (2 * n) t2 (sumOfTs + t1)
 
 instance IsTest Benchmarkable where
-  testOptions = pure [Option (Proxy :: Proxy RelStDev), Option (Proxy :: Proxy PlainFormat)]
+  testOptions = pure [Option (Proxy :: Proxy RelStDev), Option (Proxy :: Proxy (Maybe CsvPath))]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
       let targetRelStDev = unRelStDev (lookupOption opts) / 100
@@ -284,9 +285,9 @@ instance IsTest Benchmarkable where
             Timeout micros _ -> Just $ micros * 1000000
 
       meas <- measureTimeUntil timeout targetRelStDev b
-      let msg = if unPlainFormat (lookupOption opts)
-                then show (measMean meas, measSigma meas)
-                else show meas
+      let msg = case lookupOption opts of
+                Nothing -> show meas
+                Just CsvPath{} -> show (measMean meas) ++ "," ++ show (truncate (measSigma meas) :: Integer)
       pure $ testPassed msg
     _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
 
@@ -315,12 +316,15 @@ type Benchmark = TestTree
 
 -- | Run benchmarks and report results.
 --
--- Wrapper around 'Test.Tasty.defaultMain'
+-- Wrapper around 'Test.Tasty.defaultMain' (+ 'csvReporter')
 -- to provide an interface compatible with 'Criterion.defaultMain'
 -- and 'Gauge.defaultMain'.
 --
 defaultMain :: [Benchmark] -> IO ()
-defaultMain = Test.Tasty.defaultMain . testGroup "All"
+defaultMain = Test.Tasty.defaultMainWithIngredients ingredients . testGroup "All"
+  where
+    ingredients = [listingTests, csvReporter, consoleTestReporter]
+
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
@@ -445,3 +449,71 @@ nfAppIO = ioFuncToBench rnf
 whnfAppIO :: (a -> IO b) -> a -> Benchmarkable
 whnfAppIO = ioFuncToBench id
 {-# INLINE whnfAppIO #-}
+
+newtype CsvPath = CsvPath { _unCsvPath :: FilePath }
+  deriving (Typeable)
+
+instance IsOption (Maybe CsvPath) where
+  defaultValue = Nothing
+  parseValue = Just . Just . CsvPath
+  optionName = pure "csv"
+  optionHelp = pure "File to write results in CSV format. If specified, suppresses console output"
+
+-- | Add this ingredient to run benchmarks and save results in CSV format.
+-- It activates when @--csv@ @FILE@ command line option is specified.
+--
+-- @
+-- defaultMainWithIngredients [listingTests, csvReporter, consoleTestReporter] benchmarks
+-- @
+--
+-- Remember that successful activation of an ingredient suppresses all subsequent
+-- ingredients. If you wish to produce CSV in addition to other reports,
+-- use 'composeReporters':
+--
+-- @
+-- defaultMainWithIngredients [listingTests, composeReporters csvReporter consoleTestReporter] benchmarks
+-- @
+--
+csvReporter :: Ingredient
+csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
+  \opts tree -> do
+    CsvPath path <- lookupOption opts
+    pure $ \smap -> do
+      bracket
+        (do
+          h <- openFile path WriteMode
+          hSetBuffering h LineBuffering
+          hPutStrLn h "Name,Mean (ps),Stdev (ps)"
+          pure h
+        )
+        hClose
+        (\h -> csvOutput (buildCsvOutput h opts tree) smap)
+      pure $ const ((== 0) . statFailures <$> computeStatistics smap)
+
+buildCsvOutput :: Handle -> OptionSet -> TestTree -> TestOutput
+buildCsvOutput h = ((($ []) . getApp) .) . foldTestTree
+  trivialFold { foldSingle = const runSingleTest, foldGroup =
+#if MIN_VERSION_tasty(1,4,0)
+    const runGroup
+#else
+    runGroup
+#endif
+  }
+  where
+    runSingleTest name = const $ Ap $ \prefix -> PrintTest name
+      (hPutStr h $ encodeCsv (intercalate "." (reverse (name : prefix))) ++ ",")
+      (hPutStrLn h <=< formatMessage . resultDescription)
+
+    runGroup name (Ap grp) = Ap $ \prefix -> grp (name : prefix)
+
+csvOutput :: TestOutput -> StatusMap -> IO ()
+csvOutput = (getTraversal .) . foldTestOutput (const foldTest) (const (const id))
+  where
+    foldTest printName getResult printResult =
+      Traversal $ printName >> getResult >>= printResult
+
+encodeCsv :: String -> String
+encodeCsv xs
+  | any (`elem` xs) ",\"\n\r"
+  = '"' : concatMap (\x -> if x == '"' then "\"\"" else [x]) xs ++ "\""
+  | otherwise = xs

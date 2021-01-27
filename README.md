@@ -4,7 +4,9 @@ Featherlight benchmark framework (only one file!) for performance measurement wi
 
 ## How lightweight is it?
 
-There is only one source file `Test.Tasty.Bench`, less than 450 lines, and no external dependencies except [`tasty`](http://hackage.haskell.org/package/tasty). So if you already depend on `tasty` for a test suite, there
+There is only one source file `Test.Tasty.Bench` and no external dependencies
+except [`tasty`](http://hackage.haskell.org/package/tasty).
+So if you already depend on `tasty` for a test suite, there
 is nothing else to install.
 
 Compare this to `criterion` (10+ modules, 50+ dependencies) and `gauge` (40+ modules, depends on `basement` and `vector`).
@@ -116,11 +118,9 @@ Use `--help` to list command-line options.
   [`tasty` documentation](https://github.com/feuerbach/tasty#patterns)
   for details.
 
-* `--plain`
+* `--csv`
 
-  Produce machine-readable output:
-  `(mean in picoseconds, standard deviation in picoseconds)`.
-  This is handy for consumption by other `tasty` ingredients.
+  File to write results in CSV format. If specified, suppresses console output.
 
 * `-t`, `--timeout`
 
