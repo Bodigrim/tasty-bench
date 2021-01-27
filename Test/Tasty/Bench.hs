@@ -110,6 +110,12 @@ This is in contrast to @criterion@, which fits all measurements and
 is biased to use more data points corresponding to shorter runs
 (it employs \( n \leftarrow 1.05n \) progression).
 
+=== Tip
+
+Passing @+RTS@ @-T@ (via @cabal@ @bench@ @--benchmark-options@ @'+RTS@ @-T'@
+or @stack@ @bench@ @--ba@ @'+RTS@ @-T'@) enables @tasty-bench@ to estimate and report
+memory usage such as allocated and copied bytes.
+
 === Command-line options
 
 Use @--help@ to list command-line options.
@@ -168,8 +174,11 @@ import Control.Exception
 import Control.Monad
 import Data.Data (Typeable)
 import Data.Int
-import Data.Monoid ()
+import Data.List (intercalate)
 import Data.Proxy
+#if MIN_VERSION_base(4,6,0)
+import GHC.Stats
+#endif
 import System.CPUTime
 import System.Mem
 import Test.Tasty hiding (defaultMain)
@@ -181,7 +190,6 @@ import Test.Tasty.Runners
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import System.IO
-import Data.List (intercalate)
 
 newtype RelStDev = RelStDev { unRelStDev :: Double }
   deriving (Eq, Ord, Show, Typeable)
@@ -215,65 +223,133 @@ showPicos i
     t = fromInteger i
     a = abs t
 
-data Measurement = Measurement
-  { measMean  :: !Integer -- ^ time in picoseconds
-  , measSigma :: !Double  -- ^ stdev in picoseconds
-  } deriving (Eq, Ord)
+showBytes :: Integer -> String
+showBytes i
+  | a < 1000          = printf "%3.0f B " t
+  | a < 10189         = printf "%3.1f KB" (t / 1024)
+  | a < 1023488       = printf "%3.0f KB" (t / 1024)
+  | a < 10433332      = printf "%3.1f MB" (t / 1048576)
+  | a < 1048051712    = printf "%3.0f MB" (t / 1048576)
+  | a < 10683731149   = printf "%3.1f GB" (t / 1073741824)
+  | a < 1073204953088 = printf "%3.0f GB" (t / 1073741824)
+  | otherwise         = printf "%.1f TB"  (t / 1099511627776)
+  where
+    t, a :: Double
+    t = fromInteger i
+    a = abs t
 
-instance Show Measurement where
-  show (Measurement mean sigma) =
-    -- Two sigmas correspond to 95% probability,
-    showPicos mean ++ " ± " ++ showPicos (truncate (2 * sigma))
+data Measurement = Measurement
+  { measTime   :: !Integer -- ^ time in picoseconds
+  , measAllocs :: !Integer -- ^ allocations in bytes
+  , measCopied :: !Integer -- ^ copied bytes
+  }
+
+data Estimate = Estimate
+  { estMean  :: !Measurement
+  , estSigma :: !Integer  -- ^ stdev in picoseconds
+  }
+
+prettyEstimate :: Estimate -> String
+prettyEstimate (Estimate m sigma) =
+  -- Two sigmas correspond to 95% probability,
+  showPicos (measTime m) ++ " ± " ++ showPicos (2 * sigma)
+
+prettyEstimateWithGC :: Estimate -> String
+prettyEstimateWithGC (Estimate m sigma) =
+  -- Two sigmas correspond to 95% probability,
+  showPicos (measTime m) ++ " ± " ++ showPicos (2 * sigma)
+  ++ ", " ++ showBytes (measAllocs m) ++ " allocated, "
+  ++ showBytes (measCopied m) ++ " copied"
+
+csvEstimate :: Estimate -> String
+csvEstimate (Estimate m sigma) = show (measTime m) ++ "," ++ show sigma
+
+csvEstimateWithGC :: Estimate -> String
+csvEstimateWithGC (Estimate m sigma) = show (measTime m) ++ "," ++ show sigma
+  ++ "," ++ show (measAllocs m) ++ "," ++ show (measCopied m)
 
 predict
-  :: Integer -- ^ time for one run
-  -> Integer -- ^ time for two runs
-  -> Measurement
-predict t1 t2 = Measurement a (sqrt (fromInteger d))
+  :: Measurement -- ^ time for one run
+  -> Measurement -- ^ time for two runs
+  -> Estimate
+predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
+  { estMean  = Measurement t a c
+  , estSigma = truncate (sqrt (fromInteger d) :: Double)
+  }
   where
     sqr x = x * x
-    d = sqr (t1 - a) + sqr (t2 - 2 * a)
-    a = (t1 + 2 * t2) `quot` 5
+    d = sqr (t1 - t) + sqr (t2 - 2 * t)
+    t = (t1 + 2 * t2) `quot` 5
+    a = (a1 + 2 * a2) `quot` 5
+    c = (c1 + 2 * c2) `quot` 5
 
-predictPerturbed :: Integer -> Integer -> Measurement
-predictPerturbed t1 t2 = Measurement
-  { measMean = measMean (predict t1 t2)
-  , measSigma = max
-    (measSigma (predict (t1 - prec) (t2 + prec)))
-    (measSigma (predict (t1 + prec) (t2 - prec)))
+predictPerturbed :: Measurement -> Measurement -> Estimate
+predictPerturbed t1 t2 = Estimate
+  { estMean = estMean (predict t1 t2)
+  , estSigma = max
+    (estSigma (predict (lo t1) (hi t2)))
+    (estSigma (predict (hi t1) (lo t2)))
   }
   where
     prec = max cpuTimePrecision 1000000000 -- 1 ms
+    hi meas = meas { measTime = measTime meas + prec }
+    lo meas = meas { measTime = measTime meas - prec }
 
-measureTime :: Int64 -> Benchmarkable -> IO Integer
+#if !MIN_VERSION_base(4,10,0)
+getRTSStatsEnabled :: IO Bool
+#if MIN_VERSION_base(4,6,0)
+getRTSStatsEnabled = getGCStatsEnabled
+#else
+getRTSStatsEnabled = pure False
+#endif
+#endif
+
+getAllocsAndCopied :: IO (Integer, Integer)
+getAllocsAndCopied = do
+  enabled <- getRTSStatsEnabled
+  if not enabled then pure (0, 0) else
+#if MIN_VERSION_base(4,10,0)
+    (\s -> (toInteger $ allocated_bytes s, toInteger $ copied_bytes s)) <$> getRTSStats
+#elif MIN_VERSION_base(4,6,0)
+    (\s -> (toInteger $ bytesAllocated s, toInteger $ bytesCopied s)) <$> getGCStats
+#else
+    pure (0, 0)
+#endif
+
+measureTime :: Int64 -> Benchmarkable -> IO Measurement
 measureTime n (Benchmarkable act) = do
   performGC
   startTime <- getCPUTime
+  (startAllocs, startCopied) <- getAllocsAndCopied
   act n
   endTime <- getCPUTime
-  pure $ endTime - startTime
+  (endAllocs, endCopied) <- getAllocsAndCopied
+  pure $ Measurement
+    { measTime   = endTime - startTime
+    , measAllocs = endAllocs - startAllocs
+    , measCopied = endCopied - startCopied
+    }
 
-measureTimeUntil :: Maybe Integer -> Double -> Benchmarkable -> IO Measurement
+measureTimeUntil :: Maybe Integer -> Double -> Benchmarkable -> IO Estimate
 measureTimeUntil timeout targetRelStDev b = do
   t1 <- measureTime 1 b
   go 1 t1 0
   where
-    go :: Int64 -> Integer -> Integer -> IO Measurement
+    go :: Int64 -> Measurement -> Integer -> IO Estimate
     go n t1 sumOfTs = do
       t2 <- measureTime (2 * n) b
 
-      let Measurement meanN sigmaN = predictPerturbed t1 t2
+      let Estimate (Measurement meanN allocN copiedN) sigmaN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
             Nothing -> False
             -- multiplying by 1.2 helps to avoid accidental timeouts
-            Just t  -> (sumOfTs + t1 + t2 + (2 * t2)) * 12 >= t * 10
-          mean = meanN `quot` toInteger n
-          sigma = sigmaN / fromIntegral n
-          isStDevInTargetRange = sigma / fromInteger mean < targetRelStDev
+            Just tmt  -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= tmt * 10
+          isStDevInTargetRange = sigmaN < truncate (targetRelStDev * fromInteger meanN)
+          scale = (`quot` toInteger n)
 
-      if mean > 0 && (isStDevInTargetRange || isTimeoutSoon)
-        then pure $ Measurement mean sigma
-        else go (2 * n) t2 (sumOfTs + t1)
+      if isStDevInTargetRange || isTimeoutSoon
+        then pure $ Estimate (Measurement (scale meanN) (scale allocN) (scale copiedN)) (scale sigmaN)
+        else go (2 * n) t2 (sumOfTs + measTime t1)
 
 instance IsTest Benchmarkable where
   testOptions = pure [Option (Proxy :: Proxy RelStDev), Option (Proxy :: Proxy (Maybe CsvPath))]
@@ -283,12 +359,12 @@ instance IsTest Benchmarkable where
           timeout = case lookupOption opts of
             NoTimeout -> Nothing
             Timeout micros _ -> Just $ micros * 1000000
+      hasGCStats <- getRTSStatsEnabled
 
-      meas <- measureTimeUntil timeout targetRelStDev b
-      let msg = case lookupOption opts of
-                Nothing -> show meas
-                Just CsvPath{} -> show (measMean meas) ++ "," ++ show (truncate (measSigma meas) :: Integer)
-      pure $ testPassed msg
+      est <- measureTimeUntil timeout targetRelStDev b
+      pure $ testPassed $ case lookupOption opts of
+        Nothing        -> (if hasGCStats then prettyEstimateWithGC else prettyEstimate) est
+        Just CsvPath{} -> (if hasGCStats then csvEstimateWithGC    else csvEstimate)    est
     _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
 
 -- | Attach a name to 'Benchmarkable'.
@@ -483,7 +559,9 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
         (do
           h <- openFile path WriteMode
           hSetBuffering h LineBuffering
-          hPutStrLn h "Name,Mean (ps),Stdev (ps)"
+          hasGCStats <- getRTSStatsEnabled
+          hPutStrLn h $ "Name,Mean (ps),Stdev (ps)" ++
+            (if hasGCStats then ",Allocated,Copied" else "")
           pure h
         )
         hClose

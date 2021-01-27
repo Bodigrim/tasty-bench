@@ -107,6 +107,12 @@ This is in contrast to `criterion`, which fits all measurements and
 is biased to use more data points corresponding to shorter runs
 (it employs _n_ ← _1.05n_ progression).
 
+## Tip
+
+Passing `+RTS -T` (via `cabal bench --benchmark-options '+RTS -T'`
+or `stack bench --ba '+RTS -T'`) enables `tasty-bench` to estimate and report
+memory usage such as allocated and copied bytes.
+
 ## Command-line options
 
 Use `--help` to list command-line options.
