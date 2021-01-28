@@ -87,15 +87,50 @@ All 3 tests passed (7.25s)
 
 The output says that, for instance, the first benchmark
 was repeatedly executed for 2.13 seconds (wall time),
-its mean time was 63 nanoseconds and
-execution time should not often diverge from the mean
+its mean time was 63 nanoseconds and,
+assuming ideal precision of a system clock,
+execution time does not often diverge from the mean
 further than ±3.4 nanoseconds
 (double standard deviation, which for normal distributions
-corresponds to 95% probability).
+corresponds to [95%](https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule)
+probability). Take standard deviation numbers
+with a grain of salt; there are lies, damned lies, and statistics.
+
+Note that this data is not directly comparable with @criterion@ output:
+
+@
+benchmarking fibonacci numbers/fifth
+time                 62.78 ns   (61.99 ns .. 63.41 ns)
+                     0.999 R²   (0.999 R² .. 1.000 R²)
+mean                 62.39 ns   (61.93 ns .. 62.94 ns)
+std dev              1.753 ns   (1.427 ns .. 2.258 ns)
+@
+
+One might interpret the second line as saying that
+95% of measurements fell into 61.99–63.41 ns interval, but this is wrong.
+It states that the [OLS regression](https://en.wikipedia.org/wiki/Ordinary_least_squares)
+of execution time (which is not exactly the mean time) is most probably
+somewhere between 61.99 ns and 63.41 ns,
+but does not say a thing about individual measurements.
+To understand how far away a typical measurement deviates
+you need to add/subtract double standard deviation yourself
+(which gives 62.78 ns ± 3.506 ns, similar to @tasty-bench@ above).
+
+To add to the confusion, @gauge@ in @--small@ mode outputs
+not the second line of @criterion@ report as one might expect,
+but a mean value from the penultimate line and a standard deviation:
+
+@
+fibonacci numbers/fifth                  mean 62.39 ns  ( +- 1.753 ns  )
+@
+
+The interval ±1.753 ns answers
+for [68%](https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule)
+of samples only, double it to estimate the behaviour in 95% of cases.
 
 === Statistical model
 
-Here is a procedure, used by @tasty-bench@ to measure execution time:
+Here is a procedure used by @tasty-bench@ to measure execution time:
 
 1. Set \( n \leftarrow 1 \).
 2. Measure execution time \( t_n \)  of \( n \) iterations
@@ -111,6 +146,23 @@ which are presumably shorter and noisier, do not affect overall result.
 This is in contrast to @criterion@, which fits all measurements and
 is biased to use more data points corresponding to shorter runs
 (it employs \( n \leftarrow 1.05n \) progression).
+
+An alert reader could object that we measure standard deviation
+for samples with \( n \) and \( 2n \) iterations, but report
+it scaled to a single iteration.
+Strictly speaking, this is justified only if we assume
+that deviating factors are either roughly periodic
+(e. g., coarseness of a system clock, garbage collection)
+or are likely to affect several successive iterations in the same way
+(e. g., slow down by another concurrent process).
+
+Obligatory disclaimer: statistics is a tricky matter, there is no
+one-size-fits-all approach.
+In the absense of a good theory
+simplistic approaches are as (un)sound as obscure ones.
+Those who seek statistical soundness should rather collect raw data
+and process it themselves in R/Python. Data reported by @tasty-bench@
+is only of indicative and comparative significance.
 
 === Tip
 
