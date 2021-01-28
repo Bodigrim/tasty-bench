@@ -87,9 +87,11 @@ All 3 tests passed (7.25s)
 
 The output says that, for instance, the first benchmark
 was repeatedly executed for 2.13 seconds (wall time),
-its mean time was 63 nanoseconds and with 95% probability
-execution time should not diverge from the mean
-further than ±3.4 nanoseconds (double standard deviation).
+its mean time was 63 nanoseconds and
+execution time should not often diverge from the mean
+further than ±3.4 nanoseconds
+(double standard deviation, which for normal distributions
+corresponds to 95% probability).
 
 === Statistical model
 
@@ -262,10 +264,10 @@ prettyEstimateWithGC (Estimate m sigma) =
   ++ showBytes (measCopied m) ++ " copied"
 
 csvEstimate :: Estimate -> String
-csvEstimate (Estimate m sigma) = show (measTime m) ++ "," ++ show sigma
+csvEstimate (Estimate m sigma) = show (measTime m) ++ "," ++ show (2 * sigma)
 
 csvEstimateWithGC :: Estimate -> String
-csvEstimateWithGC (Estimate m sigma) = show (measTime m) ++ "," ++ show sigma
+csvEstimateWithGC (Estimate m sigma) = show (measTime m) ++ "," ++ show (2 * sigma)
   ++ "," ++ show (measAllocs m) ++ "," ++ show (measCopied m)
 
 predict
@@ -560,7 +562,7 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
           h <- openFile path WriteMode
           hSetBuffering h LineBuffering
           hasGCStats <- getRTSStatsEnabled
-          hPutStrLn h $ "Name,Mean (ps),Stdev (ps)" ++
+          hPutStrLn h $ "Name,Mean (ps),2*Stdev (ps)" ++
             (if hasGCStats then ",Allocated,Copied" else "")
           pure h
         )
