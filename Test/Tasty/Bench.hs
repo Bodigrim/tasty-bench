@@ -49,6 +49,23 @@ it is easy to switch temporarily back to @criterion@.
 
 === How to write a benchmark?
 
+Benchmarks are declared in a separate section of @cabal@ file:
+
+@
+cabal-version:   2.0
+name:            bench-fibo
+version:         0.0
+build-type:      Simple
+synopsis:        Example of a benchmark
+
+benchmark bench-fibo
+  main-is:       BenchFibo.hs
+  type:          exitcode-stdio-1.0
+  build-depends: base, tasty-bench
+@
+
+And here is @BenchFibo.hs@:
+
 @
 import Test.Tasty.Bench
 
@@ -70,7 +87,8 @@ one can refer to [its documentation](http://www.serpentine.com/criterion/tutoria
 
 === How to read results?
 
-Running the example above results in the following output:
+Running the example above (@cabal@ @bench@ or @stack@ @bench@)
+results in the following output:
 
 @
 All
@@ -136,7 +154,8 @@ Here is a procedure used by @tasty-bench@ to measure execution time:
 2. Measure execution time \( t_n \)  of \( n \) iterations
    and execution time \( t_{2n} \) of \( 2n \) iterations.
 3. Find \( t \) which minimizes deviation of \( (nt, 2nt) \) from \( (t_n, t_{2n}) \).
-4. If deviation is small enough, return \( t \) as a mean execution time.
+4. If deviation is small enough (see @--stdev@ below),
+   return \( t \) as a mean execution time.
 5. Otherwise set \( n \leftarrow 2n \) and jump back to Step 2.
 
 This is roughly similar to the linear regression approach which @criterion@ takes,

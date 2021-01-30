@@ -46,6 +46,23 @@ it is easy to switch temporarily back to `criterion`.
 
 ## How to write a benchmark?
 
+Benchmarks are declared in a separate section of `cabal` file:
+
+```cabal
+cabal-version:   2.0
+name:            bench-fibo
+version:         0.0
+build-type:      Simple
+synopsis:        Example of a benchmark
+
+benchmark bench-fibo
+  main-is:       BenchFibo.hs
+  type:          exitcode-stdio-1.0
+  build-depends: base, tasty-bench
+```
+
+And here is `BenchFibo.hs`:
+
 ```haskell
 import Test.Tasty.Bench
 
@@ -67,7 +84,8 @@ one can refer to [its documentation](http://www.serpentine.com/criterion/tutoria
 
 ## How to read results?
 
-Running the example above results in the following output:
+Running the example above (`cabal bench` or `stack bench`)
+results in the following output:
 
 ```
 All
@@ -133,7 +151,8 @@ Here is a procedure used by `tasty-bench` to measure execution time:
 2. Measure execution time _tₙ_ of _n_ iterations
    and execution time _t₂ₙ_ of _2n_ iterations.
 3. Find _t_ which minimizes deviation of (_nt_, _2nt_) from (_tₙ_, _t₂ₙ_).
-4. If deviation is small enough, return _t_ as a mean execution time.
+4. If deviation is small enough (see `--stdev` below),
+   return _t_ as a mean execution time.
 5. Otherwise set _n_ ← _2n_ and jump back to Step 2.
 
 This is roughly similar to the linear regression approach which `criterion` takes,
