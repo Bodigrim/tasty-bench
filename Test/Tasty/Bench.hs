@@ -180,7 +180,8 @@ one-size-fits-all approach.
 In the absence of a good theory
 simplistic approaches are as (un)sound as obscure ones.
 Those who seek statistical soundness should rather collect raw data
-and process it themselves in R/Python. Data reported by @tasty-bench@
+and process it themselves using a proper statistical toolbox.
+Data reported by @tasty-bench@
 is only of indicative and comparative significance.
 
 === Tip
