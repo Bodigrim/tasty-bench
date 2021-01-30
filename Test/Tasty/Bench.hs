@@ -184,11 +184,24 @@ and process it themselves using a proper statistical toolbox.
 Data reported by @tasty-bench@
 is only of indicative and comparative significance.
 
-=== Tip
+=== Memory usage
 
 Passing @+RTS@ @-T@ (via @cabal@ @bench@ @--benchmark-options@ @'+RTS@ @-T'@
 or @stack@ @bench@ @--ba@ @'+RTS@ @-T'@) enables @tasty-bench@ to estimate and report
 memory usage such as allocated and copied bytes.
+
+@
+All
+  fibonacci numbers
+    fifth:     OK (2.13s)
+       63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied
+    tenth:     OK (1.71s)
+      809 ns ±  73 ns, 2.3 KB allocated,   0 B  copied
+    twentieth: OK (3.39s)
+      104 μs ± 4.9 μs, 277 KB allocated,  59 B  copied
+
+All 3 tests passed (7.25s)
+@
 
 === Command-line options
 
