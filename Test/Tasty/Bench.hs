@@ -144,7 +144,7 @@ fibonacci numbers/fifth                  mean 62.39 ns  ( +- 1.753 ns  )
 
 The interval ±1.753 ns answers
 for [68%](https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule)
-of samples only, double it to estimate the behaviour in 95% of cases.
+of samples only, double it to estimate the behavior in 95% of cases.
 
 === Statistical model
 
@@ -177,7 +177,7 @@ or are likely to affect several successive iterations in the same way
 
 Obligatory disclaimer: statistics is a tricky matter, there is no
 one-size-fits-all approach.
-In the absense of a good theory
+In the absence of a good theory
 simplistic approaches are as (un)sound as obscure ones.
 Those who seek statistical soundness should rather collect raw data
 and process it themselves in R/Python. Data reported by @tasty-bench@
