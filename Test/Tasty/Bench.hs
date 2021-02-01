@@ -220,7 +220,7 @@ Use @--help@ to list command-line options.
   This is a standard @tasty@ option, setting timeout for individual benchmarks
   in seconds. Use it when benchmarks tend to take too long: @tasty-bench@ will make
   an effort to report results (even if of subpar quality) before timeout. Setting
-  timeout too tight (insufficient for at least three iterations of benchmark)
+  timeout too tight (insufficient for at least three iterations)
   will result in a benchmark failure. Do not use @--timeout@ without a reason:
   it forks an additional thread and thus affects reliability of measurements.
 
@@ -296,7 +296,6 @@ newtype Benchmarkable = Benchmarkable { _unBenchmarkable :: Int64 -> IO () }
 
 showPicos :: Integer -> String
 showPicos i
-  | a == 0    = "0"
   | a < 995   = printf "%3.0f ps" t
   | a < 995e1 = printf "%3.1f ns" (t / 1e3)
   | a < 995e3 = printf "%3.0f ns" (t / 1e3)
