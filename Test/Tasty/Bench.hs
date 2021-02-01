@@ -243,6 +243,8 @@ module Test.Tasty.Bench
   , Benchmark
   , bench
   , bgroup
+  , env
+  , envWithCleanup
   -- * Creating 'Benchmarkable'
   , Benchmarkable
   , nf
@@ -277,6 +279,7 @@ import Test.Tasty.Runners
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import System.IO
+import System.IO.Unsafe
 
 newtype RelStDev = RelStDev { unRelStDev :: Double }
   deriving (Eq, Ord, Show, Typeable)
@@ -611,6 +614,33 @@ nfAppIO = ioFuncToBench rnf
 whnfAppIO :: (a -> IO b) -> a -> Benchmarkable
 whnfAppIO = ioFuncToBench id
 {-# INLINE whnfAppIO #-}
+
+-- | Run benchmarks in the given environment, usually reading large input data from file.
+--
+-- One might wonder why 'env' is needed,
+-- when we can simply read all input data
+-- before calling 'defaultMain'. The reason is that large data
+-- dangling in the heap causes longer garbage collection
+-- and slows down all benchmarks, even those which do not use it at all.
+--
+-- Provided only for the sake of compatibility with 'Criterion.env' and 'Gauge.env',
+-- and involves 'unsafePerformIO'. Consider using 'withResource' instead.
+--
+env :: NFData env => IO env -> (env -> Benchmark) -> Benchmark
+env res = envWithCleanup res (const $ pure ())
+
+-- | Similar to 'env', but includes an additional argument
+-- to clean up created environment.
+--
+-- Provided only for the sake of compatibility
+-- with 'Criterion.envWithCleanup' and 'Gauge.envWithCleanup',
+-- and involves 'unsafePerformIO'. Consider using 'withResource' instead.
+--
+envWithCleanup :: NFData env => IO env -> (env -> IO a) -> (env -> Benchmark) -> Benchmark
+envWithCleanup res fin f = withResource
+  (res >>= evaluate . force)
+  (void . fin)
+  (f . unsafePerformIO)
 
 newtype CsvPath = CsvPath { _unCsvPath :: FilePath }
   deriving (Typeable)
