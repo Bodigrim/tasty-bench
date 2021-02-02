@@ -34,6 +34,7 @@ library
 
   build-depends:
     base >= 4.3 && < 5,
+    containers >= 0.4,
     deepseq >= 1.1,
     tasty >= 1.2.3
   if impl(ghc < 7.8)

@@ -264,11 +264,17 @@ import Control.DeepSeq
 import Control.Exception
 import Control.Monad (void, unless, (>=>))
 import Data.Data (Typeable)
-import Data.Foldable (foldMap)
+import Data.Foldable (foldMap, traverse_)
 import Data.Int
-import Data.List (intercalate)
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
+import Data.List (intercalate, stripPrefix, isPrefixOf)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
+#if MIN_VERSION_containers(0,5,0)
+import Data.Set (lookupGE)
+#endif
+import qualified Data.Set as S
 import Data.Traversable (forM)
 import GHC.Conc
 #if MIN_VERSION_base(4,6,0)
@@ -490,7 +496,7 @@ type Benchmark = TestTree
 defaultMain :: [Benchmark] -> IO ()
 defaultMain = Test.Tasty.defaultMainWithIngredients ingredients . testGroup "All"
   where
-    ingredients = [listingTests, composeReporters csvReporter consoleBenchReporter]
+    ingredients = [listingTests, composeReporters consoleBenchReporter csvReporter]
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
@@ -659,45 +665,29 @@ csvReporter :: Ingredient
 csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
   \opts tree -> do
     CsvPath path <- lookupOption opts
+    let names = IM.fromDistinctAscList $ zip [0..] (testsNames opts tree)
     pure $ \smap -> do
+      let augmented = IM.intersectionWith (,) names smap
+      hasGCStats <- getRTSStatsEnabled
       bracket
         (do
           h <- openFile path WriteMode
           hSetBuffering h LineBuffering
-          hasGCStats <- getRTSStatsEnabled
           hPutStrLn h $ "Name,Mean (ps),2*Stdev (ps)" ++
             (if hasGCStats then ",Allocated,Copied" else "")
           pure h
         )
         hClose
-        (\h -> csvOutput (buildCsvOutput h opts tree) smap)
+        (`csvOutput` augmented)
       pure $ const ((== 0) . statFailures <$> computeStatistics smap)
 
-buildCsvOutput :: Handle -> OptionSet -> TestTree -> TestOutput
-buildCsvOutput h = ((($ []) . getApp) .) . foldTestTree
-  trivialFold { foldSingle = const runSingleTest, foldGroup =
-#if MIN_VERSION_tasty(1,4,0)
-    const runGroup
-#else
-    runGroup
-#endif
-  }
-  where
-    runSingleTest name = const $ Ap $ \prefix -> PrintTest name
-      (hPutStr h $ encodeCsv (intercalate "." (reverse (name : prefix))) ++ ",")
-      (\r -> do
-        hasGCStats <- getRTSStatsEnabled
-        let csv = if hasGCStats then csvEstimateWithGC else csvEstimate
-        msg <- formatMessage $ csv $ read $ resultDescription r
-        hPutStrLn h msg)
-
-    runGroup name (Ap grp) = Ap $ \prefix -> grp (name : prefix)
-
-csvOutput :: TestOutput -> StatusMap -> IO ()
-csvOutput = (getTraversal .) . foldTestOutput (const foldTest) (const (const id))
-  where
-    foldTest printName getResult printResult =
-      Traversal $ printName >> getResult >>= printResult
+csvOutput :: Handle -> IntMap (TestName, TVar Status) -> IO ()
+csvOutput h = traverse_ $ \(name, tv) -> do
+  hasGCStats <- getRTSStatsEnabled
+  let csv = if hasGCStats then csvEstimateWithGC else csvEstimate
+  r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
+  msg <- formatMessage $ csv $ read $ resultDescription r
+  hPutStrLn h (encodeCsv name ++ ',' : msg)
 
 encodeCsv :: String -> String
 encodeCsv xs
@@ -705,26 +695,66 @@ encodeCsv xs
   = '"' : concatMap (\x -> if x == '"' then "\"\"" else [x]) xs ++ "\""
   | otherwise = xs
 
+newtype BaselinePath = BaselinePath { _unBaselinePath :: FilePath }
+  deriving (Typeable)
+
+instance IsOption (Maybe BaselinePath) where
+  defaultValue = Nothing
+  parseValue = Just . Just . BaselinePath
+  optionName = pure "baseline"
+  optionHelp = pure "File with baseline results in CSV format to compare against"
+
 -- | Run benchmarks and report results
 -- in a manner similar to 'consoleTestReporter'.
+-- Compare results against an earlier run,
+-- if @--baseline@ @FILE@ command line option is specified.
 --
 consoleBenchReporter :: Ingredient
-consoleBenchReporter = modifyConsoleReporter $ do
+consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe BaselinePath))] $ \opts -> do
+  baseline <- case lookupOption opts of
+    Nothing -> pure S.empty
+    Just (BaselinePath path) -> S.fromList . lines <$> (readFile path >>= evaluate . force)
   hasGCStats <- getRTSStatsEnabled
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
-  pure $ \r -> r { resultDescription = pretty (read (resultDescription r)) }
+  pure $ \name r -> let est = read (resultDescription r) in
+    r { resultDescription = pretty est ++ compareVsBaseline baseline name est }
 
-modifyConsoleReporter :: IO (Result -> Result) -> Ingredient
-modifyConsoleReporter f = TestReporter desc ((fmap (((f >>=) . flip postprocessResult) >=>) .) . cb)
+compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> String
+compareVsBaseline baseline name (Estimate m sigma) = case mOld of
+  Nothing -> ""
+  Just (oldTime, oldDoubleSigma)
+    | abs (time - oldTime) < max (2 * sigma) oldDoubleSigma -> ""
+    | otherwise -> printf ", %2i%% %s than baseline"
+      (abs (100 - 100 * time `quot` oldTime))
+      (if time > oldTime then "slower" else "faster")
+  where
+    time = measTime m
+    mOld = do
+      let prefix = encodeCsv name ++ ","
+      line <- lookupGE prefix baseline
+      (timeCell, ',' : rest) <- span (/= ',') <$> stripPrefix prefix line
+      let doubleSigmaCell = takeWhile (/= ',') rest
+      (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
+
+#if !MIN_VERSION_containers(0,5,0)
+lookupGE :: TestName -> S.Set TestName -> Maybe TestName
+lookupGE x = fmap fst . S.minView . S.filter (x `isPrefixOf`)
+#endif
+
+modifyConsoleReporter :: [OptionDescription] -> (OptionSet -> IO (TestName -> Result -> Result)) -> Ingredient
+modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
+  let names = IM.fromDistinctAscList $ zip [0..] (testsNames opts tree)
+      modifySMap = (iof opts >>=) . flip postprocessResult . IM.intersectionWith (,) names
+  in (modifySMap >=>) <$> cb opts tree
   where
     TestReporter desc cb = consoleTestReporter
 
-postprocessResult :: (Result -> Result) -> StatusMap -> IO StatusMap
+postprocessResult :: (TestName -> Result -> Result) -> IntMap (TestName, TVar Status) -> IO StatusMap
 postprocessResult f src = do
-  paired <- forM src $ \tv -> (tv,) <$> newTVarIO NotStarted
+  paired <- forM src $ \(name, tv) -> (name, tv,) <$> newTVarIO NotStarted
   let doUpdate = atomically $ do
         (Any anyUpdated, All allDone) <-
-          getApp $ flip foldMap paired $ \(newTV, oldTV) -> Ap $ do
+          getApp $ flip foldMap paired $ \(name, newTV, oldTV) -> Ap $ do
             old <- readTVar oldTV
             case old of
               Done{} -> pure (Any False, All True)
@@ -732,7 +762,7 @@ postprocessResult f src = do
                 new <- readTVar newTV
                 case new of
                   Done res -> do
-                    writeTVar oldTV (Done (f res))
+                    writeTVar oldTV (Done (f name res))
                     pure (Any True, All True)
                   -- ignoring Progress nodes, we do not report any
                   -- it would be helpful to have instance Eq Status
@@ -740,4 +770,4 @@ postprocessResult f src = do
         if anyUpdated || allDone then pure allDone else retry
       adNauseam = doUpdate >>= (`unless` adNauseam)
   _ <- forkIO adNauseam
-  pure $ fmap snd paired
+  pure $ fmap (\(_, _, a) -> a) paired
