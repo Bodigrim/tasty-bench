@@ -213,7 +213,7 @@ Use `--help` to list command-line options.
 
 * `--csv`
 
-  File to write results in CSV format. If specified, suppresses console output.
+  File to write results in CSV format.
 
 * `-t`, `--timeout`
 
@@ -221,8 +221,7 @@ Use `--help` to list command-line options.
   in seconds. Use it when benchmarks tend to take too long: `tasty-bench` will make
   an effort to report results (even if of subpar quality) before timeout. Setting
   timeout too tight (insufficient for at least three iterations)
-  will result in a benchmark failure. Do not use `--timeout` without a reason:
-  it forks an additional thread and thus affects reliability of measurements.
+  will result in a benchmark failure.
 
 * `--stdev`
 

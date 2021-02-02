@@ -214,15 +214,14 @@ Use @--help@ to list command-line options.
   for details.
 
 [@--csv@]:
-  File to write results in CSV format. If specified, suppresses console output.
+  File to write results in CSV format.
 
 [@-t@, @--timeout@]:
   This is a standard @tasty@ option, setting timeout for individual benchmarks
   in seconds. Use it when benchmarks tend to take too long: @tasty-bench@ will make
   an effort to report results (even if of subpar quality) before timeout. Setting
   timeout too tight (insufficient for at least three iterations)
-  will result in a benchmark failure. Do not use @--timeout@ without a reason:
-  it forks an additional thread and thus affects reliability of measurements.
+  will result in a benchmark failure.
 
 [@--stdev@]:
   Target relative standard deviation of measurements in percents (5% by default).
@@ -233,8 +232,10 @@ Use @--help@ to list command-line options.
 -}
 
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TupleSections #-}
 
 module Test.Tasty.Bench
   (
@@ -253,18 +254,23 @@ module Test.Tasty.Bench
   , whnfIO
   , nfAppIO
   , whnfAppIO
-  -- * CSV ingredient
+  -- * Ingredients
+  , consoleBenchReporter
   , csvReporter
   ) where
 
 import Control.Applicative
 import Control.DeepSeq
 import Control.Exception
-import Control.Monad
+import Control.Monad (void, unless, (>=>))
 import Data.Data (Typeable)
+import Data.Foldable (foldMap)
 import Data.Int
 import Data.List (intercalate)
+import Data.Monoid (All(..), Any(..))
 import Data.Proxy
+import Data.Traversable (forM)
+import GHC.Conc
 #if MIN_VERSION_base(4,6,0)
 import GHC.Stats
 #endif
@@ -331,12 +337,12 @@ data Measurement = Measurement
   { measTime   :: !Integer -- ^ time in picoseconds
   , measAllocs :: !Integer -- ^ allocations in bytes
   , measCopied :: !Integer -- ^ copied bytes
-  }
+  } deriving (Show, Read)
 
 data Estimate = Estimate
   { estMean  :: !Measurement
   , estSigma :: !Integer  -- ^ stdev in picoseconds
-  }
+  } deriving (Show, Read)
 
 prettyEstimate :: Estimate -> String
 prettyEstimate (Estimate m sigma) =
@@ -441,19 +447,15 @@ measureTimeUntil timeout targetRelStDev b = do
         else go (2 * n) t2 (sumOfTs + measTime t1)
 
 instance IsTest Benchmarkable where
-  testOptions = pure [Option (Proxy :: Proxy RelStDev), Option (Proxy :: Proxy (Maybe CsvPath))]
+  testOptions = pure [Option (Proxy :: Proxy RelStDev)]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
       let targetRelStDev = unRelStDev (lookupOption opts) / 100
           timeout = case lookupOption opts of
             NoTimeout -> Nothing
             Timeout micros _ -> Just $ micros * 1000000
-      hasGCStats <- getRTSStatsEnabled
-
       est <- measureTimeUntil timeout targetRelStDev b
-      pure $ testPassed $ case lookupOption opts of
-        Nothing        -> (if hasGCStats then prettyEstimateWithGC else prettyEstimate) est
-        Just CsvPath{} -> (if hasGCStats then csvEstimateWithGC    else csvEstimate)    est
+      pure $ testPassed $ show est
     _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
 
 -- | Attach a name to 'Benchmarkable'.
@@ -481,15 +483,14 @@ type Benchmark = TestTree
 
 -- | Run benchmarks and report results.
 --
--- Wrapper around 'Test.Tasty.defaultMain' (+ 'csvReporter')
+-- Combines 'consoleBenchReporter' and 'csvReporter'
 -- to provide an interface compatible with 'Criterion.defaultMain'
 -- and 'Gauge.defaultMain'.
 --
 defaultMain :: [Benchmark] -> IO ()
 defaultMain = Test.Tasty.defaultMainWithIngredients ingredients . testGroup "All"
   where
-    ingredients = [listingTests, csvReporter, consoleTestReporter]
-
+    ingredients = [listingTests, composeReporters csvReporter consoleBenchReporter]
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
@@ -649,22 +650,10 @@ instance IsOption (Maybe CsvPath) where
   defaultValue = Nothing
   parseValue = Just . Just . CsvPath
   optionName = pure "csv"
-  optionHelp = pure "File to write results in CSV format. If specified, suppresses console output"
+  optionHelp = pure "File to write results in CSV format"
 
--- | Add this ingredient to run benchmarks and save results in CSV format.
+-- | Run benchmarks and save results in CSV format.
 -- It activates when @--csv@ @FILE@ command line option is specified.
---
--- @
--- defaultMainWithIngredients [listingTests, csvReporter, consoleTestReporter] benchmarks
--- @
---
--- Remember that successful activation of an ingredient suppresses all subsequent
--- ingredients. If you wish to produce CSV in addition to other reports,
--- use 'composeReporters':
---
--- @
--- defaultMainWithIngredients [listingTests, composeReporters csvReporter consoleTestReporter] benchmarks
--- @
 --
 csvReporter :: Ingredient
 csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
@@ -696,7 +685,11 @@ buildCsvOutput h = ((($ []) . getApp) .) . foldTestTree
   where
     runSingleTest name = const $ Ap $ \prefix -> PrintTest name
       (hPutStr h $ encodeCsv (intercalate "." (reverse (name : prefix))) ++ ",")
-      (hPutStrLn h <=< formatMessage . resultDescription)
+      (\r -> do
+        hasGCStats <- getRTSStatsEnabled
+        let csv = if hasGCStats then csvEstimateWithGC else csvEstimate
+        msg <- formatMessage $ csv $ read $ resultDescription r
+        hPutStrLn h msg)
 
     runGroup name (Ap grp) = Ap $ \prefix -> grp (name : prefix)
 
@@ -711,3 +704,40 @@ encodeCsv xs
   | any (`elem` xs) ",\"\n\r"
   = '"' : concatMap (\x -> if x == '"' then "\"\"" else [x]) xs ++ "\""
   | otherwise = xs
+
+-- | Run benchmarks and report results
+-- in a manner similar to 'consoleTestReporter'.
+--
+consoleBenchReporter :: Ingredient
+consoleBenchReporter = modifyConsoleReporter $ do
+  hasGCStats <- getRTSStatsEnabled
+  let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
+  pure $ \r -> r { resultDescription = pretty (read (resultDescription r)) }
+
+modifyConsoleReporter :: IO (Result -> Result) -> Ingredient
+modifyConsoleReporter f = TestReporter desc ((fmap (((f >>=) . flip postprocessResult) >=>) .) . cb)
+  where
+    TestReporter desc cb = consoleTestReporter
+
+postprocessResult :: (Result -> Result) -> StatusMap -> IO StatusMap
+postprocessResult f src = do
+  paired <- forM src $ \tv -> (tv,) <$> newTVarIO NotStarted
+  let doUpdate = atomically $ do
+        (Any anyUpdated, All allDone) <-
+          getApp $ flip foldMap paired $ \(newTV, oldTV) -> Ap $ do
+            old <- readTVar oldTV
+            case old of
+              Done{} -> pure (Any False, All True)
+              _ -> do
+                new <- readTVar newTV
+                case new of
+                  Done res -> do
+                    writeTVar oldTV (Done (f res))
+                    pure (Any True, All True)
+                  -- ignoring Progress nodes, we do not report any
+                  -- it would be helpful to have instance Eq Status
+                  _ -> pure (Any False, All False)
+        if anyUpdated || allDone then pure allDone else retry
+      adNauseam = doUpdate >>= (`unless` adNauseam)
+  _ <- forkIO adNauseam
+  pure $ fmap snd paired
