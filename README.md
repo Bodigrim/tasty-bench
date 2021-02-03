@@ -200,6 +200,55 @@ All
 All 3 tests passed (7.25s)
 ```
 
+## Combining tests and benchmarks
+
+When optimizing an existing function, it is important to check that its
+observable behavior remains unchanged. One can rebuild
+both tests and benchmarks after each change, but it would be more convenient
+to run sanity checks within benchmark itself. Since our benchmarks
+are compatible with `tasty` tests, we can easily do so.
+
+Imagine you come up with a faster function `myFibo` to generate Fibonacci numbers:
+
+```haskell
+import Test.Tasty.Bench
+import Test.Tasty.QuickCheck -- from tasty-quickcheck package
+
+fibo :: Int -> Integer
+fibo n = if n < 2 then toInteger n else fibo (n - 1) + fibo (n - 2)
+
+myFibo :: Int -> Integer
+myFibo n = if n < 3 then toInteger n else myFibo (n - 1) + myFibo (n - 2)
+
+main :: IO ()
+main = Test.Tasty.Bench.defaultMain -- not Test.Tasty.defaultMain
+  [ bench "fibo   20" $ nf fibo   20
+  , bench "myFibo 20" $ nf myFibo 20
+  , testProperty "myFibo = fibo" $ \n -> fibo n === myFibo n
+  ]
+```
+
+This outputs:
+
+```
+All
+  fibo   20:     OK (3.02s)
+    104 μs ± 4.9 μs
+  myFibo 20:     OK (1.99s)
+     71 μs ± 5.3 μs
+  myFibo = fibo: FAIL
+    *** Failed! Falsified (after 5 tests and 1 shrink):
+    2
+    1 /= 2
+    Use --quickcheck-replay=927711 to reproduce.
+
+1 out of 3 tests failed (5.03s)
+```
+
+We see that `myFibo` is indeed significantly faster than `fibo`,
+but unfortunately does not do the same thing. One should probably
+look for another way to speed up generation of Fibonacci numbers.
+
 ## Command-line options
 
 Use `--help` to list command-line options.
