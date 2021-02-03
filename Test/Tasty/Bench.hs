@@ -257,6 +257,7 @@ module Test.Tasty.Bench
   -- * Ingredients
   , consoleBenchReporter
   , csvReporter
+  , RelStDev(..)
   ) where
 
 import Control.Applicative
@@ -293,6 +294,10 @@ import Test.Tasty.Ingredients.ConsoleReporter
 import System.IO
 import System.IO.Unsafe
 
+-- | In addition to @--stdev@ command-line option,
+-- one can adjust target relative standard deviation
+-- of individual benchmarks and groups of benchmarks
+-- using 'adjustOption' and 'localOption'.
 newtype RelStDev = RelStDev { unRelStDev :: Double }
   deriving (Eq, Ord, Show, Typeable)
 
