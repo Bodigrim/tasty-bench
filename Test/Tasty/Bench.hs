@@ -686,8 +686,11 @@ csvOutput h = traverse_ $ \(name, tv) -> do
   hasGCStats <- getRTSStatsEnabled
   let csv = if hasGCStats then csvEstimateWithGC else csvEstimate
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
-  msg <- formatMessage $ csv $ read $ resultDescription r
-  hPutStrLn h (encodeCsv name ++ ',' : msg)
+  case safeRead (resultDescription r) of
+    Nothing  -> pure ()
+    Just est -> do
+      msg <- formatMessage $ csv est
+      hPutStrLn h (encodeCsv name ++ ',' : msg)
 
 encodeCsv :: String -> String
 encodeCsv xs
@@ -716,8 +719,9 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
     Just (BaselinePath path) -> S.fromList . lines <$> (readFile path >>= evaluate . force)
   hasGCStats <- getRTSStatsEnabled
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
-  pure $ \name r -> let est = read (resultDescription r) in
-    r { resultDescription = pretty est ++ compareVsBaseline baseline name est }
+  pure $ \name r -> case safeRead (resultDescription r) of
+    Nothing  -> r
+    Just est -> r { resultDescription = pretty est ++ compareVsBaseline baseline name est }
 
 compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> String
 compareVsBaseline baseline name (Estimate m sigma) = case mOld of
