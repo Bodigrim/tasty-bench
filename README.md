@@ -249,6 +249,56 @@ We see that `myFibo` is indeed significantly faster than `fibo`,
 but unfortunately does not do the same thing. One should probably
 look for another way to speed up generation of Fibonacci numbers.
 
+## Troubleshooting
+
+If benchmark results look malformed like below, make sure that you are invoking
+`Test.Tasty.Bench.defaultMain` and not `Test.Tasty.defaultMain` (the difference
+is `consoleBenchReporter` vs. `consoleTestReporter`):
+
+```
+All
+  fibo 20:       OK (1.46s)
+    Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estSigma = 694487}, respIfSlower = FailIfSlower {unFailIfSlower = Infinity}, respIfFaster = FailIfFaster {unFailIfFaster = Infinity}}
+```
+
+## Comparison against baseline
+
+One can compare benchmark results against an earlier baseline in an automatic way.
+To use this feature, first run `tasty-bench` with `--csv FILE` key
+to dump results to `FILE` in CSV format:
+
+```
+Name,Mean (ps),2*Stdev (ps)
+All.fibonacci numbers.fifth,48453,4060
+All.fibonacci numbers.tenth,637152,46744
+All.fibonacci numbers.twentieth,81369531,3342646
+```
+
+Now modify implementation and rerun benchmarks
+with `--baseline FILE` key. This produces a report as follows:
+
+```
+All
+  fibonacci numbers
+    fifth:     OK (0.44s)
+       53 ns ± 2.7 ns,  8% slower than baseline
+    tenth:     OK (0.33s)
+      641 ns ±  59 ns
+    twentieth: OK (0.36s)
+       77 μs ± 6.4 μs,  5% faster than baseline
+
+All 4 tests passed (1.50s)
+```
+
+You can also fail benchmarks, which deviate too far from baseline, using
+`--fail-if-slower` and `--fail-if-faster` options. For example, setting both of them
+to 6 will fail the first benchmark above (because it is more than 6% slower),
+but the last one still succeeds (even while it is measurably faster than baseline,
+deviation is less than 6%). Consider also using `--hide-successes` to show
+only problematic benchmarks, or even
+[`tasty-rerun`](http://hackage.haskell.org/package/tasty-rerun) package
+to focus on rerunning failing items only.
+
 ## Command-line options
 
 Use `--help` to list command-line options.
@@ -259,10 +309,6 @@ Use `--help` to list command-line options.
   by a pattern or `awk` expression. Please refer to
   [`tasty` documentation](https://github.com/feuerbach/tasty#patterns)
   for details.
-
-* `--csv`
-
-  File to write results in CSV format.
 
 * `-t`, `--timeout`
 
@@ -278,3 +324,17 @@ Use `--help` to list command-line options.
   Large values correspond to fast and loose benchmarks, and small ones to long and precise.
   If it takes far too long, consider setting `--timeout`,
   which will interrupt benchmarks, potentially before reaching the target deviation.
+
+* `--csv`
+
+  File to write results in CSV format.
+
+* `--baseline`
+
+  File to read baseline results in CSV format (as produced by `--csv`).
+
+* `--fail-if-slower`, `--fail-if-faster`
+
+  Upper bounds of acceptable slow down / speed up in percents. If a benchmark is unacceptably slower / faster than baseline (see `--baseline`),
+  it will be reported as failed. One can use them in conjunction with
+  a standard `tasty` option `--hide-successes` to show only problematic benchmarks.
