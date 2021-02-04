@@ -30,7 +30,7 @@ library
   exposed-modules:  Test.Tasty.Bench
   hs-source-dirs:   .
   default-language: Haskell2010
-  ghc-options:      -Wall -fno-warn-unused-imports
+  ghc-options:      -O2 -Wall -fno-warn-unused-imports
 
   build-depends:
     base >= 4.3 && < 5,
