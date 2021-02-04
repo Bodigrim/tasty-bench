@@ -321,6 +321,7 @@ import Data.Set (lookupGE)
 #endif
 import qualified Data.Set as S
 import Data.Traversable (forM)
+import Data.Word
 import GHC.Conc
 #if MIN_VERSION_base(4,6,0)
 import GHC.Stats
@@ -371,45 +372,45 @@ instance IsOption FailIfSlower where
 newtype Benchmarkable = Benchmarkable { _unBenchmarkable :: Int64 -> IO () }
   deriving (Typeable)
 
-showPicos :: Integer -> String
+showPicos :: Word64 -> String
 showPicos i
-  | a < 995   = printf "%3.0f ps" t
-  | a < 995e1 = printf "%3.1f ns" (t / 1e3)
-  | a < 995e3 = printf "%3.0f ns" (t / 1e3)
-  | a < 995e4 = printf "%3.1f μs" (t / 1e6)
-  | a < 995e6 = printf "%3.0f μs" (t / 1e6)
-  | a < 995e7 = printf "%3.1f ms" (t / 1e9)
-  | a < 995e9 = printf "%3.0f ms" (t / 1e9)
+  | t < 995   = printf "%3.0f ps" t
+  | t < 995e1 = printf "%3.1f ns" (t / 1e3)
+  | t < 995e3 = printf "%3.0f ns" (t / 1e3)
+  | t < 995e4 = printf "%3.1f μs" (t / 1e6)
+  | t < 995e6 = printf "%3.0f μs" (t / 1e6)
+  | t < 995e7 = printf "%3.1f ms" (t / 1e9)
+  | t < 995e9 = printf "%3.0f ms" (t / 1e9)
   | otherwise = printf "%.1f s"   (t / 1e12)
   where
-    t, a :: Double
-    t = fromInteger i
-    a = abs t
+    t :: Double
+    t = fromIntegral i
 
-showBytes :: Integer -> String
+showBytes :: Word64 -> String
 showBytes i
-  | a < 1000          = printf "%3.0f B " t
-  | a < 10189         = printf "%3.1f KB" (t / 1024)
-  | a < 1023488       = printf "%3.0f KB" (t / 1024)
-  | a < 10433332      = printf "%3.1f MB" (t / 1048576)
-  | a < 1048051712    = printf "%3.0f MB" (t / 1048576)
-  | a < 10683731149   = printf "%3.1f GB" (t / 1073741824)
-  | a < 1073204953088 = printf "%3.0f GB" (t / 1073741824)
+  | t < 1000          = printf "%3.0f B " t
+  | t < 10189         = printf "%3.1f KB" (t / 1024)
+  | t < 1023488       = printf "%3.0f KB" (t / 1024)
+  | t < 10433332      = printf "%3.1f MB" (t / 1048576)
+  | t < 1048051712    = printf "%3.0f MB" (t / 1048576)
+  | t < 10683731149   = printf "%3.1f GB" (t / 1073741824)
+  | t < 1073204953088 = printf "%3.0f GB" (t / 1073741824)
   | otherwise         = printf "%.1f TB"  (t / 1099511627776)
   where
-    t, a :: Double
-    t = fromInteger i
-    a = abs t
+    t :: Double
+    t = fromIntegral i
 
+-- | It is crucial for precision to make all fields strict and unboxable.
 data Measurement = Measurement
-  { measTime   :: !Integer -- ^ time in picoseconds
-  , measAllocs :: !Integer -- ^ allocations in bytes
-  , measCopied :: !Integer -- ^ copied bytes
+  { measTime   :: !Word64 -- ^ time in picoseconds
+  , measAllocs :: !Word64 -- ^ allocations in bytes
+  , measCopied :: !Word64 -- ^ copied bytes
   } deriving (Show, Read)
 
+-- | It is crucial for precision to make all fields strict and unboxable.
 data Estimate = Estimate
   { estMean  :: !Measurement
-  , estSigma :: !Integer  -- ^ stdev in picoseconds
+  , estSigma :: !Word64  -- ^ stdev in picoseconds
   } deriving (Show, Read)
 
 prettyEstimate :: Estimate -> String
@@ -437,7 +438,7 @@ predict
   -> Estimate
 predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
   { estMean  = Measurement t a c
-  , estSigma = truncate (sqrt (fromInteger d) :: Double)
+  , estSigma = truncate (sqrt (fromIntegral d) :: Double)
   }
   where
     sqr x = x * x
@@ -454,7 +455,7 @@ predictPerturbed t1 t2 = Estimate
     (estSigma (predict (hi t1) (lo t2)))
   }
   where
-    prec = max cpuTimePrecision 1000000000 -- 1 ms
+    prec = max (fromInteger cpuTimePrecision) 1000000000 -- 1 ms
     hi meas = meas { measTime = measTime meas + prec }
     lo meas = meas { measTime = measTime meas - prec }
 
@@ -467,14 +468,14 @@ getRTSStatsEnabled = pure False
 #endif
 #endif
 
-getAllocsAndCopied :: IO (Integer, Integer)
+getAllocsAndCopied :: IO (Word64, Word64)
 getAllocsAndCopied = do
   enabled <- getRTSStatsEnabled
   if not enabled then pure (0, 0) else
 #if MIN_VERSION_base(4,10,0)
-    (\s -> (toInteger $ allocated_bytes s, toInteger $ copied_bytes s)) <$> getRTSStats
+    (\s -> (allocated_bytes s, copied_bytes s)) <$> getRTSStats
 #elif MIN_VERSION_base(4,6,0)
-    (\s -> (toInteger $ bytesAllocated s, toInteger $ bytesCopied s)) <$> getGCStats
+    (\s -> (fromIntegral $ bytesAllocated s, fromIntegral $ bytesCopied s)) <$> getGCStats
 #else
     pure (0, 0)
 #endif
@@ -482,10 +483,10 @@ getAllocsAndCopied = do
 measureTime :: Int64 -> Benchmarkable -> IO Measurement
 measureTime n (Benchmarkable act) = do
   performGC
-  startTime <- getCPUTime
+  startTime <- fromInteger <$> getCPUTime
   (startAllocs, startCopied) <- getAllocsAndCopied
   act n
-  endTime <- getCPUTime
+  endTime <- fromInteger <$> getCPUTime
   (endAllocs, endCopied) <- getAllocsAndCopied
   pure $ Measurement
     { measTime   = endTime - startTime
@@ -493,12 +494,12 @@ measureTime n (Benchmarkable act) = do
     , measCopied = endCopied - startCopied
     }
 
-measureTimeUntil :: Maybe Integer -> Double -> Benchmarkable -> IO Estimate
+measureTimeUntil :: Maybe Word64 -> Double -> Benchmarkable -> IO Estimate
 measureTimeUntil timeout targetRelStDev b = do
   t1 <- measureTime 1 b
   go 1 t1 0
   where
-    go :: Int64 -> Measurement -> Integer -> IO Estimate
+    go :: Int64 -> Measurement -> Word64 -> IO Estimate
     go n t1 sumOfTs = do
       t2 <- measureTime (2 * n) b
 
@@ -507,8 +508,8 @@ measureTimeUntil timeout targetRelStDev b = do
             Nothing -> False
             -- multiplying by 1.2 helps to avoid accidental timeouts
             Just tmt  -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= tmt * 10
-          isStDevInTargetRange = sigmaN < truncate (targetRelStDev * fromInteger meanN)
-          scale = (`quot` toInteger n)
+          isStDevInTargetRange = sigmaN < truncate (targetRelStDev * fromIntegral meanN)
+          scale = (`quot` fromIntegral n)
 
       if isStDevInTargetRange || isTimeoutSoon
         then pure $ Estimate (Measurement (scale meanN) (scale allocN) (scale copiedN)) (scale sigmaN)
@@ -527,7 +528,7 @@ instance IsTest Benchmarkable where
       let targetRelStDev = unRelStDev (lookupOption opts) / 100
           timeout = case lookupOption opts of
             NoTimeout -> Nothing
-            Timeout micros _ -> Just $ micros * 1000000
+            Timeout micros _ -> Just $ fromInteger $ micros * 1000000
           threshold = unFailIfSlower (lookupOption opts) / 100
       est <- measureTimeUntil timeout targetRelStDev b
       pure $ testPassed $ show (est, threshold)
@@ -793,17 +794,17 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
   pure $ \name r -> case safeRead (resultDescription r) of
     Nothing  -> r
     Just (est, thres :: Double) -> let slowDown = compareVsBaseline baseline name est in
-      (if fromInteger slowDown >= 100 * thres then forceFail else id)
+      (if fromIntegral slowDown >= 100 * thres then forceFail else id)
       r { resultDescription = pretty est ++ formatSlowDown slowDown }
 
-compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Integer
+compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Int64
 compareVsBaseline baseline name (Estimate m sigma) = case mOld of
   Nothing -> 0
   Just (oldTime, oldDoubleSigma)
-    | abs (time - oldTime) < max (2 * sigma) oldDoubleSigma -> 0
-    | otherwise -> 100 * time `quot` oldTime - 100
+    | abs (time - oldTime) < max (2 * fromIntegral sigma) oldDoubleSigma -> 0
+    | otherwise -> 100 * (time - oldTime) `quot` oldTime
   where
-    time = measTime m
+    time = fromIntegral $ measTime m
     mOld = do
       let prefix = encodeCsv name ++ ","
       line <- lookupGE prefix baseline
@@ -811,7 +812,7 @@ compareVsBaseline baseline name (Estimate m sigma) = case mOld of
       let doubleSigmaCell = takeWhile (/= ',') rest
       (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
 
-formatSlowDown :: Integer -> String
+formatSlowDown :: Int64 -> String
 formatSlowDown n = case n `compare` 0 of
   LT -> printf ", %2i%% faster than baseline" (-n)
   EQ -> ""
