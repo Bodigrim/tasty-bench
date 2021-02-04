@@ -302,6 +302,7 @@ module Test.Tasty.Bench
   , csvReporter
   , RelStDev(..)
   , FailIfSlower(..)
+  , FailIfFaster(..)
   ) where
 
 import Control.Applicative
@@ -376,6 +377,25 @@ instance IsOption FailIfSlower where
   optionName = pure "fail-if-slower"
   optionHelp = pure "Upper bound of acceptable slow down in percents. If a benchmark is unacceptably slower than baseline (see --baseline), it will be reported as failed."
 
+-- | In addition to @--fail-if-faster@ command-line option,
+-- one can adjust an upper bound of acceptable speed up
+-- in comparison to baseline for
+-- individual benchmarks and groups of benchmarks
+-- using 'adjustOption' and 'localOption'.
+--
+-- E. g., set upper bound of acceptable speed up to 10% as follows:
+--
+-- > localOption (FailIfFaster 0.10) (bgroup [...])
+--
+newtype FailIfFaster = FailIfFaster { unFailIfFaster :: Double }
+  deriving (Eq, Ord, Show, Read, Typeable)
+
+instance IsOption FailIfFaster where
+  defaultValue = FailIfFaster (1.0 / 0.0)
+  parseValue = fmap (FailIfFaster . (* 0.01)) . safeRead
+  optionName = pure "fail-if-faster"
+  optionHelp = pure "Upper bound of acceptable speed up in percents. If a benchmark is unacceptably faster than baseline (see --baseline), it will be reported as failed."
+
 -- | Something that can be benchmarked.
 --
 -- Drop-in replacement for 'Criterion.Benchmarkable' and 'Gauge.Benchmarkable'.
@@ -422,6 +442,13 @@ data Measurement = Measurement
 data Estimate = Estimate
   { estMean  :: !Measurement
   , estSigma :: !Word64  -- ^ stdev in picoseconds
+  } deriving (Show, Read)
+
+-- | It is crucial for precision to make all fields strict and unboxable.
+data Response = Response
+  { respEstimate :: !Estimate
+  , respIfSlower :: !FailIfSlower -- ^ saved value of --fail-if-slower
+  , respIfFaster :: !FailIfFaster -- ^ saved value of --fail-if-faster
   } deriving (Show, Read)
 
 prettyEstimate :: Estimate -> String
@@ -529,15 +556,15 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
 instance IsTest Benchmarkable where
   testOptions = pure
     [ Option (Proxy :: Proxy RelStDev)
-    -- FailIfSlower must be an option of a test provider
-    -- rather than an option of an ingredient
-    -- in order to set it individually
+    -- FailIfSlower and FailIfFaster must be options of a test provider rather
+    -- than an option of an ingredient to allow setting them on per-test level.
     , Option (Proxy :: Proxy FailIfSlower)
+    , Option (Proxy :: Proxy FailIfFaster)
     ]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
       est <- measureTimeUntil (lookupOption opts) (lookupOption opts) b
-      pure $ testPassed $ show (est, lookupOption opts :: FailIfSlower)
+      pure $ testPassed $ show (Response est (lookupOption opts) (lookupOption opts))
     _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
 
 -- | Attach a name to 'Benchmarkable'.
@@ -764,7 +791,7 @@ csvOutput h = traverse_ $ \(name, tv) -> do
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
   case safeRead (resultDescription r) of
     Nothing -> pure ()
-    Just (est, _ :: FailIfSlower) -> do
+    Just (Response est _ _) -> do
       msg <- formatMessage $ csv est
       hPutStrLn h (encodeCsv name ++ ',' : msg)
 
@@ -799,9 +826,14 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
   pure $ \name r -> case safeRead (resultDescription r) of
     Nothing  -> r
-    Just (est, FailIfSlower thres) -> let slowDown = compareVsBaseline baseline name est in
-      (if fromIntegral slowDown >= 100 * thres then forceFail else id)
+    Just (Response est (FailIfSlower ifSlow) (FailIfFaster ifFast)) ->
+      (if isAcceptable then id else forceFail)
       r { resultDescription = pretty est ++ formatSlowDown slowDown }
+      where
+        slowDown = compareVsBaseline baseline name est
+        isAcceptable -- ifSlow/ifFast could be infinite
+          =  fromIntegral slowDown <=  100 * ifSlow
+          && fromIntegral slowDown >= -100 * ifFast
 
 compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Int64
 compareVsBaseline baseline name (Estimate m sigma) = case mOld of
