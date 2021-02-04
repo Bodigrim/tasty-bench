@@ -277,6 +277,7 @@ Use @--help@ to list command-line options.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
 module Test.Tasty.Bench
@@ -300,6 +301,7 @@ module Test.Tasty.Bench
   , consoleBenchReporter
   , csvReporter
   , RelStDev(..)
+  , FailIfSlower(..)
   ) where
 
 import Control.Applicative
@@ -348,6 +350,19 @@ instance IsOption RelStDev where
   parseValue = fmap RelStDev . safeRead
   optionName = pure "stdev"
   optionHelp = pure "Target relative standard deviation of measurements in percents (5 by default). Large values correspond to fast and loose benchmarks, and small ones to long and precise. If it takes far too long, consider setting --timeout, which will interrupt benchmarks, potentially before reaching the target deviation."
+
+-- | In addition to @--fail-if-slower@ command-line option,
+-- one can adjust a threshold to fail
+-- individual benchmarks and groups of benchmarks
+-- using 'adjustOption' and 'localOption'.
+newtype FailIfSlower = FailIfSlower { unFailIfSlower :: Double }
+  deriving (Typeable)
+
+instance IsOption FailIfSlower where
+  defaultValue = FailIfSlower (1.0 / 0.0)
+  parseValue = fmap FailIfSlower . safeRead
+  optionName = pure "fail-if-slower"
+  optionHelp = pure "Threshold in percents to mark benchmarks as failed, if they are significantly slower than baseline (see --baseline)."
 
 -- | Something that can be benchmarked.
 --
@@ -500,15 +515,22 @@ measureTimeUntil timeout targetRelStDev b = do
         else go (2 * n) t2 (sumOfTs + measTime t1)
 
 instance IsTest Benchmarkable where
-  testOptions = pure [Option (Proxy :: Proxy RelStDev)]
+  testOptions = pure
+    [ Option (Proxy :: Proxy RelStDev)
+    -- FailIfSlower must be an option of a test provider
+    -- rather than an option of an ingredient
+    -- in order to set it individually
+    , Option (Proxy :: Proxy FailIfSlower)
+    ]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
       let targetRelStDev = unRelStDev (lookupOption opts) / 100
           timeout = case lookupOption opts of
             NoTimeout -> Nothing
             Timeout micros _ -> Just $ micros * 1000000
+          threshold = unFailIfSlower (lookupOption opts) / 100
       est <- measureTimeUntil timeout targetRelStDev b
-      pure $ testPassed $ show est
+      pure $ testPassed $ show (est, threshold)
     _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
 
 -- | Attach a name to 'Benchmarkable'.
@@ -734,8 +756,8 @@ csvOutput h = traverse_ $ \(name, tv) -> do
   let csv = if hasGCStats then csvEstimateWithGC else csvEstimate
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
   case safeRead (resultDescription r) of
-    Nothing  -> pure ()
-    Just est -> do
+    Nothing -> pure ()
+    Just (est, _ :: Double) -> do
       msg <- formatMessage $ csv est
       hPutStrLn h (encodeCsv name ++ ',' : msg)
 
@@ -758,6 +780,8 @@ instance IsOption (Maybe BaselinePath) where
 -- in a manner similar to 'consoleTestReporter'.
 -- Compare results against an earlier run,
 -- if @--baseline@ @FILE@ command line option is specified.
+-- Additionally mark slow (in comparison against baseline) benchmarks as failed,
+-- if @--fail-if-slower@ @PERCENT@ is provided.
 --
 consoleBenchReporter :: Ingredient
 consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe BaselinePath))] $ \opts -> do
@@ -768,16 +792,16 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
   pure $ \name r -> case safeRead (resultDescription r) of
     Nothing  -> r
-    Just est -> r { resultDescription = pretty est ++ compareVsBaseline baseline name est }
+    Just (est, thres :: Double) -> let slowDown = compareVsBaseline baseline name est in
+      (if fromInteger slowDown >= 100 * thres then forceFail else id)
+      r { resultDescription = pretty est ++ formatSlowDown slowDown }
 
-compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> String
+compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Integer
 compareVsBaseline baseline name (Estimate m sigma) = case mOld of
-  Nothing -> ""
+  Nothing -> 0
   Just (oldTime, oldDoubleSigma)
-    | abs (time - oldTime) < max (2 * sigma) oldDoubleSigma -> ""
-    | otherwise -> printf ", %2i%% %s than baseline"
-      (abs (100 - 100 * time `quot` oldTime))
-      (if time > oldTime then "slower" else "faster")
+    | abs (time - oldTime) < max (2 * sigma) oldDoubleSigma -> 0
+    | otherwise -> 100 * time `quot` oldTime - 100
   where
     time = measTime m
     mOld = do
@@ -786,6 +810,15 @@ compareVsBaseline baseline name (Estimate m sigma) = case mOld of
       (timeCell, ',' : rest) <- span (/= ',') <$> stripPrefix prefix line
       let doubleSigmaCell = takeWhile (/= ',') rest
       (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
+
+formatSlowDown :: Integer -> String
+formatSlowDown n = case n `compare` 0 of
+  LT -> printf ", %2i%% faster than baseline" (-n)
+  EQ -> ""
+  GT -> printf ", %2i%% slower than baseline" n
+
+forceFail :: Result -> Result
+forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
 
 #if !MIN_VERSION_containers(0,5,0)
 lookupGE :: TestName -> S.Set TestName -> Maybe TestName
