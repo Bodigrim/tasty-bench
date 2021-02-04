@@ -341,29 +341,40 @@ import System.IO.Unsafe
 
 -- | In addition to @--stdev@ command-line option,
 -- one can adjust target relative standard deviation
--- of individual benchmarks and groups of benchmarks
+-- for individual benchmarks and groups of benchmarks
 -- using 'adjustOption' and 'localOption'.
+--
+-- E. g., set target relative standard deviation to 5% as follows:
+--
+-- > localOption (RelStDev 0.05) (bgroup [...])
+--
 newtype RelStDev = RelStDev { unRelStDev :: Double }
-  deriving (Eq, Ord, Show, Typeable)
+  deriving (Eq, Ord, Show, Read, Typeable)
 
 instance IsOption RelStDev where
-  defaultValue = RelStDev 1
-  parseValue = fmap RelStDev . safeRead
+  defaultValue = RelStDev 0.01
+  parseValue = fmap (RelStDev . (* 0.01)) . safeRead
   optionName = pure "stdev"
   optionHelp = pure "Target relative standard deviation of measurements in percents (1 by default). Large values correspond to fast and loose benchmarks, and small ones to long and precise. If it takes far too long, consider setting --timeout, which will interrupt benchmarks, potentially before reaching the target deviation."
 
 -- | In addition to @--fail-if-slower@ command-line option,
--- one can adjust a threshold to fail
+-- one can adjust an upper bound of acceptable slow down
+-- in comparison to baseline for
 -- individual benchmarks and groups of benchmarks
 -- using 'adjustOption' and 'localOption'.
+--
+-- E. g., set upper bound of acceptable slow down to 10% as follows:
+--
+-- > localOption (FailIfSlower 0.10) (bgroup [...])
+--
 newtype FailIfSlower = FailIfSlower { unFailIfSlower :: Double }
-  deriving (Typeable)
+  deriving (Eq, Ord, Show, Read, Typeable)
 
 instance IsOption FailIfSlower where
   defaultValue = FailIfSlower (1.0 / 0.0)
-  parseValue = fmap FailIfSlower . safeRead
+  parseValue = fmap (FailIfSlower . (* 0.01)) . safeRead
   optionName = pure "fail-if-slower"
-  optionHelp = pure "Threshold in percents to mark benchmarks as failed, if they are significantly slower than baseline (see --baseline)."
+  optionHelp = pure "Upper bound of acceptable slow down in percents. If a benchmark is unacceptably slower than baseline (see --baseline), it will be reported as failed."
 
 -- | Something that can be benchmarked.
 --
@@ -494,8 +505,8 @@ measureTime n (Benchmarkable act) = do
     , measCopied = endCopied - startCopied
     }
 
-measureTimeUntil :: Maybe Word64 -> Double -> Benchmarkable -> IO Estimate
-measureTimeUntil timeout targetRelStDev b = do
+measureTimeUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
+measureTimeUntil timeout (RelStDev targetRelStDev) b = do
   t1 <- measureTime 1 b
   go 1 t1 0
   where
@@ -505,9 +516,9 @@ measureTimeUntil timeout targetRelStDev b = do
 
       let Estimate (Measurement meanN allocN copiedN) sigmaN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
-            Nothing -> False
+            NoTimeout -> False
             -- multiplying by 1.2 helps to avoid accidental timeouts
-            Just tmt  -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= tmt * 10
+            Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= fromInteger micros * 1000000 * 10
           isStDevInTargetRange = sigmaN < truncate (targetRelStDev * fromIntegral meanN)
           scale = (`quot` fromIntegral n)
 
@@ -525,13 +536,8 @@ instance IsTest Benchmarkable where
     ]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
-      let targetRelStDev = unRelStDev (lookupOption opts) / 100
-          timeout = case lookupOption opts of
-            NoTimeout -> Nothing
-            Timeout micros _ -> Just $ fromInteger $ micros * 1000000
-          threshold = unFailIfSlower (lookupOption opts) / 100
-      est <- measureTimeUntil timeout targetRelStDev b
-      pure $ testPassed $ show (est, threshold)
+      est <- measureTimeUntil (lookupOption opts) (lookupOption opts) b
+      pure $ testPassed $ show (est, lookupOption opts :: FailIfSlower)
     _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
 
 -- | Attach a name to 'Benchmarkable'.
@@ -758,7 +764,7 @@ csvOutput h = traverse_ $ \(name, tv) -> do
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
   case safeRead (resultDescription r) of
     Nothing -> pure ()
-    Just (est, _ :: Double) -> do
+    Just (est, _ :: FailIfSlower) -> do
       msg <- formatMessage $ csv est
       hPutStrLn h (encodeCsv name ++ ',' : msg)
 
@@ -793,7 +799,7 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
   pure $ \name r -> case safeRead (resultDescription r) of
     Nothing  -> r
-    Just (est, thres :: Double) -> let slowDown = compareVsBaseline baseline name est in
+    Just (est, FailIfSlower thres) -> let slowDown = compareVsBaseline baseline name est in
       (if fromIntegral slowDown >= 100 * thres then forceFail else id)
       r { resultDescription = pretty est ++ formatSlowDown slowDown }
 
