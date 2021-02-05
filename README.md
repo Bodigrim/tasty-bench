@@ -1,6 +1,9 @@
 # tasty-bench [![Hackage](http://img.shields.io/hackage/v/tasty-bench.svg)](https://hackage.haskell.org/package/tasty-bench)
 
-Featherlight benchmark framework (only one file!) for performance measurement with API mimicking [`criterion`](http://hackage.haskell.org/package/criterion) and [`gauge`](http://hackage.haskell.org/package/gauge).
+Featherlight benchmark framework (only one file!) for performance measurement
+with API mimicking [`criterion`](http://hackage.haskell.org/package/criterion)
+and [`gauge`](http://hackage.haskell.org/package/gauge).
+A prominent feature is built-in comparison against baseline.
 
 ## How lightweight is it?
 

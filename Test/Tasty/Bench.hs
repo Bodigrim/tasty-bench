@@ -7,6 +7,7 @@ Featherlight benchmark framework (only one file!) for performance
 measurement with API
 mimicking [@criterion@](http://hackage.haskell.org/package/criterion)
 and [@gauge@](http://hackage.haskell.org/package/gauge).
+A prominent feature is built-in comparison against baseline.
 
 === How lightweight is it?
 

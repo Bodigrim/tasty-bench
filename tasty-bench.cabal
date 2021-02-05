@@ -1,5 +1,5 @@
 name:          tasty-bench
-version:       0.1
+version:       0.2
 cabal-version: >=1.10
 build-type:    Simple
 license:       MIT
@@ -13,14 +13,15 @@ synopsis:      Featherlight benchmark framework
 description:
   Featherlight framework (only one file!)
   for performance measurement with API mimicking
-  @criterion@ and @gauge@. Our benchmarks are just
+  @criterion@ and @gauge@, featuring built-in comparison
+  against baseline. Our benchmarks are just
   regular @tasty@ tests.
 
 extra-source-files:
   changelog.md
   README.md
 
-tested-with: GHC==8.10.3, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2, GHC==7.2.2, GHC==7.0.4
+tested-with: GHC==9.0.1, GHC==8.10.3, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2, GHC==7.2.2, GHC==7.0.4
 
 source-repository head
   type: git
