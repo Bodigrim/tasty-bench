@@ -360,6 +360,7 @@ module Test.Tasty.Bench
   , nfAppIO
   , whnfAppIO
   -- * Ingredients
+  , benchIngredients
   , consoleBenchReporter
   , csvReporter
   , RelStDev(..)
@@ -393,12 +394,12 @@ import System.CPUTime
 import System.Mem
 import Test.Tasty hiding (defaultMain)
 import qualified Test.Tasty
-import Test.Tasty.Options
-import Test.Tasty.Providers
-import Text.Printf
-import Test.Tasty.Runners
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
+import Test.Tasty.Options
+import Test.Tasty.Providers
+import Test.Tasty.Runners
+import Text.Printf
 import System.IO
 import System.IO.Unsafe
 
@@ -658,9 +659,12 @@ type Benchmark = TestTree
 -- and 'Gauge.defaultMain'.
 --
 defaultMain :: [Benchmark] -> IO ()
-defaultMain = Test.Tasty.defaultMainWithIngredients ingredients . testGroup "All"
-  where
-    ingredients = [listingTests, composeReporters consoleBenchReporter csvReporter]
+defaultMain = Test.Tasty.defaultMainWithIngredients benchIngredients . testGroup "All"
+
+-- | List of default benchmark ingredients. This is what 'defaultMain' runs.
+--
+benchIngredients :: [Ingredient]
+benchIngredients = [listingTests, composeReporters consoleBenchReporter csvReporter]
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
