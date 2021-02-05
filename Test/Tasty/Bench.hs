@@ -260,6 +260,11 @@ automatic way. To use this feature, first run @tasty-bench@ with
 > All.fibonacci numbers.tenth,637152,46744
 > All.fibonacci numbers.twentieth,81369531,3342646
 
+Note that columns do not match CSV reports of @criterion@ and @gauge@.
+If desired, missing columns can be faked with
+@awk@ @\'BEGIN@ @{FS=\",\";OFS=\",\"};@ @{print@ @$1,$2,$2,$2,$3\/2,$3\/2,$3\/2}\'@
+or similar.
+
 Now modify implementation and rerun benchmarks with @--baseline@ @FILE@
 key. This produces a report as follows:
 
@@ -272,7 +277,7 @@ key. This produces a report as follows:
 >     twentieth: OK (0.36s)
 >        77 μs ± 6.4 μs,  5% faster than baseline
 >
-> All 4 tests passed (1.50s)
+> All 3 tests passed (1.50s)
 
 You can also fail benchmarks, which deviate too far from baseline, using
 @--fail-if-slower@ and @--fail-if-faster@ options. For example, setting
@@ -293,10 +298,6 @@ Use @--help@ to list command-line options.
     by a pattern or @awk@ expression. Please refer
     to [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns)
     for details.
-
-[@--csv@]:
-
-    File to write results in CSV format.
 
 [@-t@, @--timeout@]:
 
@@ -328,7 +329,7 @@ Use @--help@ to list command-line options.
 
     Upper bounds of acceptable slow down \/ speed up in percents. If a
     benchmark is unacceptably slower \/ faster than baseline (see
-    @--baseline@), it will be reported as failed. One can use them in
+    @--baseline@), it will be reported as failed. Can be used in
     conjunction with a standard @tasty@ option @--hide-successes@ to
     show only problematic benchmarks.
 
@@ -406,9 +407,9 @@ import System.IO.Unsafe
 -- for individual benchmarks and groups of benchmarks
 -- using 'adjustOption' and 'localOption'.
 --
--- E. g., set target relative standard deviation to 5% as follows:
+-- E. g., set target relative standard deviation to 2% as follows:
 --
--- > localOption (RelStDev 0.05) (bgroup [...])
+-- > localOption (RelStDev 0.02) (bgroup [...])
 --
 newtype RelStDev = RelStDev { unRelStDev :: Double }
   deriving (Eq, Ord, Show, Read, Typeable)
@@ -457,7 +458,8 @@ instance IsOption FailIfFaster where
   optionName = pure "fail-if-faster"
   optionHelp = pure "Upper bound of acceptable speed up in percents. If a benchmark is unacceptably faster than baseline (see --baseline), it will be reported as failed."
 
--- | Something that can be benchmarked.
+-- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
+-- 'nfAppIO', 'whnfAppIO' below.
 --
 -- Drop-in replacement for 'Criterion.Benchmarkable' and 'Gauge.Benchmarkable'.
 --
@@ -618,7 +620,7 @@ instance IsTest Benchmarkable where
   testOptions = pure
     [ Option (Proxy :: Proxy RelStDev)
     -- FailIfSlower and FailIfFaster must be options of a test provider rather
-    -- than an option of an ingredient to allow setting them on per-test level.
+    -- than options of an ingredient to allow setting them on per-test level.
     , Option (Proxy :: Proxy FailIfSlower)
     , Option (Proxy :: Proxy FailIfFaster)
     ]
@@ -651,10 +653,8 @@ bgroup = testGroup
 --
 type Benchmark = TestTree
 
--- | Run benchmarks and report results.
---
--- Combines 'consoleBenchReporter' and 'csvReporter'
--- to provide an interface compatible with 'Criterion.defaultMain'
+-- | Run benchmarks and report results, providing
+-- an interface compatible with 'Criterion.defaultMain'
 -- and 'Gauge.defaultMain'.
 --
 defaultMain :: [Benchmark] -> IO ()
@@ -673,7 +673,8 @@ funcToBench frc = (Benchmarkable .) . go
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
--- a normal form (by means of 'rnf') of @f@ @x@.
+-- a normal form (by means of 'rnf') of an application of @f@ to @x@.
+-- This does not include time to evaluate @f@ or @x@ themselves.
 --
 -- Note that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios (imagine benchmarking 'tail'),
@@ -687,7 +688,8 @@ nf = funcToBench rnf
 {-# INLINE nf #-}
 
 -- | 'whnf' @f@ @x@ measures time to compute
--- a weak head normal form of @f@ @x@.
+-- a weak head normal form of an application of @f@ to @x@.
+-- This does not include time to evaluate @f@ or @x@ themselves.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
@@ -758,8 +760,10 @@ ioFuncToBench frc = (Benchmarkable .) . go
         go f x (n - 1)
 {-# INLINE ioFuncToBench #-}
 
--- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of @f@ @x@
+-- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of
+-- an application of @f@ to @x@.
 -- and compute its normal form (by means of 'rnf').
+-- This does not include time to evaluate @f@ or @x@ themselves.
 --
 -- Note that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
@@ -772,8 +776,10 @@ nfAppIO :: NFData b => (a -> IO b) -> a -> Benchmarkable
 nfAppIO = ioFuncToBench rnf
 {-# INLINE nfAppIO #-}
 
--- | 'whnfAppIO' @f@ @x@ measures time to evaluate side-effects of @f@ @x@
+-- | 'whnfAppIO' @f@ @x@ measures time to evaluate side-effects of
+-- an application of @f@ to @x@.
 -- and compute its weak head normal form.
+-- This does not include time to evaluate @f@ or @x@ themselves.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
@@ -893,7 +899,7 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
       r { resultDescription = pretty est ++ formatSlowDown slowDown }
       where
         slowDown = compareVsBaseline baseline name est
-        isAcceptable -- ifSlow/ifFast could be infinite
+        isAcceptable -- ifSlow/ifFast may be infinite, so we cannot 'truncate'
           =  fromIntegral slowDown <=  100 * ifSlow
           && fromIntegral slowDown >= -100 * ifFast
 

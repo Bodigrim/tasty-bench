@@ -274,6 +274,10 @@ All.fibonacci numbers.tenth,637152,46744
 All.fibonacci numbers.twentieth,81369531,3342646
 ```
 
+Note that columns do not match CSV reports of `criterion` and `gauge`.
+If desired, missing columns can be faked with
+`awk 'BEGIN {FS=",";OFS=","}; {print $1,$2,$2,$2,$3/2,$3/2,$3/2}'` or similar.
+
 Now modify implementation and rerun benchmarks
 with `--baseline FILE` key. This produces a report as follows:
 
@@ -287,7 +291,7 @@ All
     twentieth: OK (0.36s)
        77 μs ± 6.4 μs,  5% faster than baseline
 
-All 4 tests passed (1.50s)
+All 3 tests passed (1.50s)
 ```
 
 You can also fail benchmarks, which deviate too far from baseline, using
@@ -336,5 +340,5 @@ Use `--help` to list command-line options.
 * `--fail-if-slower`, `--fail-if-faster`
 
   Upper bounds of acceptable slow down / speed up in percents. If a benchmark is unacceptably slower / faster than baseline (see `--baseline`),
-  it will be reported as failed. One can use them in conjunction with
+  it will be reported as failed. Can be used in conjunction with
   a standard `tasty` option `--hide-successes` to show only problematic benchmarks.
