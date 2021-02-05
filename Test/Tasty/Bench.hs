@@ -368,13 +368,14 @@ module Test.Tasty.Bench
   , FailIfFaster(..)
   ) where
 
+import Prelude hiding (Int, Integer)
 import Control.Applicative
 import Control.DeepSeq
 import Control.Exception
 import Control.Monad (void, unless, (>=>))
 import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
-import Data.Int
+import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
 import Data.List (intercalate, stripPrefix, isPrefixOf)
@@ -385,7 +386,7 @@ import Data.Set (lookupGE)
 #endif
 import qualified Data.Set as S
 import Data.Traversable (forM)
-import Data.Word
+import Data.Word (Word64)
 import GHC.Conc
 #if MIN_VERSION_base(4,6,0)
 import GHC.Stats
