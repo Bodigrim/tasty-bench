@@ -372,7 +372,7 @@ import Prelude hiding (Int, Integer)
 import Control.Applicative
 import Control.DeepSeq
 import Control.Exception
-import Control.Monad (void, unless, (>=>))
+import Control.Monad (void, unless, guard, (>=>))
 import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
@@ -413,12 +413,12 @@ import System.IO.Unsafe
 --
 -- > localOption (RelStDev 0.02) (bgroup [...])
 --
-newtype RelStDev = RelStDev { unRelStDev :: Double }
-  deriving (Eq, Ord, Show, Read, Typeable)
+newtype RelStDev = RelStDev Double
+  deriving (Show, Read, Typeable)
 
 instance IsOption RelStDev where
   defaultValue = RelStDev 0.01
-  parseValue = fmap (RelStDev . (* 0.01)) . safeRead
+  parseValue = fmap RelStDev . parsePositivePercents
   optionName = pure "stdev"
   optionHelp = pure "Target relative standard deviation of measurements in percents (1 by default). Large values correspond to fast and loose benchmarks, and small ones to long and precise. If it takes far too long, consider setting --timeout, which will interrupt benchmarks, potentially before reaching the target deviation."
 
@@ -432,12 +432,12 @@ instance IsOption RelStDev where
 --
 -- > localOption (FailIfSlower 0.10) (bgroup [...])
 --
-newtype FailIfSlower = FailIfSlower { unFailIfSlower :: Double }
-  deriving (Eq, Ord, Show, Read, Typeable)
+newtype FailIfSlower = FailIfSlower Double
+  deriving (Show, Read, Typeable)
 
 instance IsOption FailIfSlower where
   defaultValue = FailIfSlower (1.0 / 0.0)
-  parseValue = fmap (FailIfSlower . (* 0.01)) . safeRead
+  parseValue = fmap FailIfSlower . parsePositivePercents
   optionName = pure "fail-if-slower"
   optionHelp = pure "Upper bound of acceptable slow down in percents. If a benchmark is unacceptably slower than baseline (see --baseline), it will be reported as failed."
 
@@ -451,14 +451,20 @@ instance IsOption FailIfSlower where
 --
 -- > localOption (FailIfFaster 0.10) (bgroup [...])
 --
-newtype FailIfFaster = FailIfFaster { unFailIfFaster :: Double }
-  deriving (Eq, Ord, Show, Read, Typeable)
+newtype FailIfFaster = FailIfFaster Double
+  deriving (Show, Read, Typeable)
 
 instance IsOption FailIfFaster where
   defaultValue = FailIfFaster (1.0 / 0.0)
-  parseValue = fmap (FailIfFaster . (* 0.01)) . safeRead
+  parseValue = fmap FailIfFaster . parsePositivePercents
   optionName = pure "fail-if-faster"
   optionHelp = pure "Upper bound of acceptable speed up in percents. If a benchmark is unacceptably faster than baseline (see --baseline), it will be reported as failed."
+
+parsePositivePercents :: String -> Maybe Double
+parsePositivePercents xs = do
+  x <- safeRead xs
+  guard (x > 0)
+  pure (x / 100)
 
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
 -- 'nfAppIO', 'whnfAppIO' below.
@@ -611,7 +617,7 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
             NoTimeout -> False
             -- multiplying by 1.2 helps to avoid accidental timeouts
             Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= fromInteger micros * 1000000 * 10
-          isStDevInTargetRange = sigmaN < truncate (targetRelStDev * fromIntegral meanN)
+          isStDevInTargetRange = sigmaN < truncate (max 0 targetRelStDev * fromIntegral meanN)
           scale = (`quot` fromIntegral n)
 
       if isStDevInTargetRange || isTimeoutSoon
