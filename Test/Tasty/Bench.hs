@@ -685,6 +685,23 @@ funcToBench frc = (Benchmarkable .) . go
 -- | 'nf' @f@ @x@ measures time to compute
 -- a normal form (by means of 'rnf') of an application of @f@ to @x@.
 -- This does not include time to evaluate @f@ or @x@ themselves.
+-- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
+--
+-- Here is a textbook antipattern: 'nf' 'sum' @[1..1000000]@.
+-- Since an input list is shared by multiple invocations of 'sum',
+-- it will be allocated in memory in full, putting immense pressure
+-- on garbage collector. Also no list fusion will happen.
+-- A better approach is 'nf' (@\\n@ @->@ 'sum' @[1..n]@) @1000000@.
+--
+-- If you are measuring an inlinable function,
+-- it is prudent to ensure that its invocation is fully saturated,
+-- otherwise inlining will not happen. That's why one can often
+-- see 'nf' (@\\n@ @->@ @f@ @n@) @x@ instead of 'nf' @f@ @x@.
+-- Same applies to rewrite rules.
+--
+-- While @tasty-bench@ is capable to perform micro- and even nanobenchmarks,
+-- such measurements are noisy and involve an overhead. Results are more reliable
+-- when @f@ @x@ takes at least several milliseconds.
 --
 -- Note that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios (imagine benchmarking 'tail'),
@@ -700,11 +717,18 @@ nf = funcToBench rnf
 -- | 'whnf' @f@ @x@ measures time to compute
 -- a weak head normal form of an application of @f@ to @x@.
 -- This does not include time to evaluate @f@ or @x@ themselves.
+-- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
+-- Beware that many educational materials contain examples with 'whnf':
+-- this is a wrong default.
 -- Unless you understand precisely, what is measured,
 -- it is recommended to use 'nf' instead.
+--
+-- Here is a textbook antipattern: 'whnf' ('Data.List.replicate' @1000000@) @1@.
+-- This will succeed in a matter of nanoseconds, because weak head
+-- normal form forces only the first element of the list.
 --
 -- Drop-in replacement for 'Criterion.whnf' and 'Gauge.whnf'.
 --
@@ -735,6 +759,10 @@ ioToBench frc act = Benchmarkable go
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
 --
+-- A typical use case is 'nfIO' ('readFile' @"foo.txt"@).
+-- However, if you need I\/O only to read input data from a file,
+-- consider using 'env'.
+--
 -- Drop-in replacement for 'Criterion.nfIO' and 'Gauge.nfIO'.
 --
 nfIO :: NFData a => IO a -> Benchmarkable
@@ -752,6 +780,9 @@ nfIO = ioToBench rnf
 -- rarely what intuitively is meant by "evaluation".
 -- Unless you understand precisely, what is measured,
 -- it is recommended to use 'nfIO' instead.
+--
+-- Lazy I\/O is treacherous. If you need I\/O only
+-- to read input data from a file, consider using 'env'.
 --
 -- Drop-in replacement for 'Criterion.whnfIO' and 'Gauge.whnfIO'.
 --
@@ -774,11 +805,16 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- an application of @f@ to @x@.
 -- and compute its normal form (by means of 'rnf').
 -- This does not include time to evaluate @f@ or @x@ themselves.
+-- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- Note that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
+--
+-- A typical use case is 'nfAppIO' 'readFile' @"foo.txt"@.
+-- However, if you need I\/O only to read input data from a file,
+-- consider using 'env'.
 --
 -- Drop-in replacement for 'Criterion.nfAppIO' and 'Gauge.nfAppIO'.
 --
@@ -790,11 +826,15 @@ nfAppIO = ioFuncToBench rnf
 -- an application of @f@ to @x@.
 -- and compute its weak head normal form.
 -- This does not include time to evaluate @f@ or @x@ themselves.
+-- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
 -- Unless you understand precisely, what is measured,
 -- it is recommended to use 'nfAppIO' instead.
+--
+-- Lazy I\/O is treacherous. If you need I\/O only
+-- to read input data from a file, consider using 'env'.
 --
 -- Drop-in replacement for 'Criterion.whnfAppIO' and 'Gauge.whnfAppIO'.
 --
