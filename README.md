@@ -327,7 +327,7 @@ Use `--help` to list command-line options.
 
 * `--stdev`
 
-  Target relative standard deviation of measurements in percents (1% by default).
+  Target relative standard deviation of measurements in percents (5% by default).
   Large values correspond to fast and loose benchmarks, and small ones to long and precise.
   If it takes far too long, consider setting `--timeout`,
   which will interrupt benchmarks, potentially before reaching the target deviation.

@@ -311,7 +311,7 @@ Use @--help@ to list command-line options.
 
 [@--stdev@]:
 
-    Target relative standard deviation of measurements in percents (1%
+    Target relative standard deviation of measurements in percents (5%
     by default). Large values correspond to fast and loose benchmarks,
     and small ones to long and precise. If it takes far too long,
     consider setting @--timeout@, which will interrupt benchmarks,
@@ -418,10 +418,10 @@ newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)
 
 instance IsOption RelStDev where
-  defaultValue = RelStDev 0.01
+  defaultValue = RelStDev 0.05
   parseValue = fmap RelStDev . parsePositivePercents
   optionName = pure "stdev"
-  optionHelp = pure "Target relative standard deviation of measurements in percents (1 by default). Large values correspond to fast and loose benchmarks, and small ones to long and precise. If it takes far too long, consider setting --timeout, which will interrupt benchmarks, potentially before reaching the target deviation."
+  optionHelp = pure "Target relative standard deviation of measurements in percents (5 by default). Large values correspond to fast and loose benchmarks, and small ones to long and precise. If it takes far too long, consider setting --timeout, which will interrupt benchmarks, potentially before reaching the target deviation."
 
 -- | In addition to @--fail-if-slower@ command-line option,
 -- one can adjust an upper bound of acceptable slow down
