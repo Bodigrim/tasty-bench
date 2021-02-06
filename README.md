@@ -261,7 +261,7 @@ is `consoleBenchReporter` vs. `consoleTestReporter`):
 ```
 All
   fibo 20:       OK (1.46s)
-    Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estSigma = 694487}, respIfSlower = FailIfSlower {unFailIfSlower = Infinity}, respIfFaster = FailIfFaster {unFailIfFaster = Infinity}}
+    Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
 ```
 
 ## Comparison against baseline

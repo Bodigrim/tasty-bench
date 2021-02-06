@@ -248,7 +248,7 @@ invoking 'Test.Tasty.Bench.defaultMain' and not 'Test.Tasty.defaultMain'
 
 > All
 >   fibo 20:       OK (1.46s)
->     Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estSigma = 694487}, respIfSlower = FailIfSlower {unFailIfSlower = Infinity}, respIfFaster = FailIfFaster {unFailIfFaster = Infinity}}
+>     Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
 
 === Comparison against baseline
 
@@ -511,7 +511,7 @@ data Measurement = Measurement
 
 data Estimate = Estimate
   { estMean  :: !Measurement
-  , estSigma :: !Word64  -- ^ stdev in picoseconds
+  , estStdev :: !Word64  -- ^ stdev in picoseconds
   } deriving (Show, Read)
 
 data Response = Response
@@ -521,22 +521,20 @@ data Response = Response
   } deriving (Show, Read)
 
 prettyEstimate :: Estimate -> String
-prettyEstimate (Estimate m sigma) =
-  -- Two sigmas correspond to 95% probability,
-  showPicos (measTime m) ++ " ± " ++ showPicos (2 * sigma)
+prettyEstimate (Estimate m stdev) =
+  showPicos (measTime m) ++ " ± " ++ showPicos (2 * stdev)
 
 prettyEstimateWithGC :: Estimate -> String
-prettyEstimateWithGC (Estimate m sigma) =
-  -- Two sigmas correspond to 95% probability,
-  showPicos (measTime m) ++ " ± " ++ showPicos (2 * sigma)
+prettyEstimateWithGC (Estimate m stdev) =
+  showPicos (measTime m) ++ " ± " ++ showPicos (2 * stdev)
   ++ ", " ++ showBytes (measAllocs m) ++ " allocated, "
   ++ showBytes (measCopied m) ++ " copied"
 
 csvEstimate :: Estimate -> String
-csvEstimate (Estimate m sigma) = show (measTime m) ++ "," ++ show (2 * sigma)
+csvEstimate (Estimate m stdev) = show (measTime m) ++ "," ++ show (2 * stdev)
 
 csvEstimateWithGC :: Estimate -> String
-csvEstimateWithGC (Estimate m sigma) = show (measTime m) ++ "," ++ show (2 * sigma)
+csvEstimateWithGC (Estimate m stdev) = show (measTime m) ++ "," ++ show (2 * stdev)
   ++ "," ++ show (measAllocs m) ++ "," ++ show (measCopied m)
 
 predict
@@ -545,7 +543,7 @@ predict
   -> Estimate
 predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
   { estMean  = Measurement t a c
-  , estSigma = truncate (sqrt d :: Double)
+  , estStdev = truncate (sqrt d :: Double)
   }
   where
     sqr x = x * x
@@ -558,9 +556,9 @@ predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
 predictPerturbed :: Measurement -> Measurement -> Estimate
 predictPerturbed t1 t2 = Estimate
   { estMean = estMean (predict t1 t2)
-  , estSigma = max
-    (estSigma (predict (lo t1) (hi t2)))
-    (estSigma (predict (hi t1) (lo t2)))
+  , estStdev = max
+    (estStdev (predict (lo t1) (hi t2)))
+    (estStdev (predict (hi t1) (lo t2)))
   }
   where
     prec = max (fromInteger cpuTimePrecision) 1000000000 -- 1 ms
@@ -611,16 +609,16 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
     go n t1 sumOfTs = do
       t2 <- measureTime (2 * n) b
 
-      let Estimate (Measurement meanN allocN copiedN) sigmaN = predictPerturbed t1 t2
+      let Estimate (Measurement meanN allocN copiedN) stdevN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
             NoTimeout -> False
             -- multiplying by 1.2 helps to avoid accidental timeouts
             Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= fromInteger micros * 1000000 * 10
-          isStDevInTargetRange = sigmaN < truncate (max 0 targetRelStDev * fromIntegral meanN)
+          isStDevInTargetRange = stdevN < truncate (max 0 targetRelStDev * fromIntegral meanN)
           scale = (`quot` fromIntegral n)
 
       if isStDevInTargetRange || isTimeoutSoon
-        then pure $ Estimate (Measurement (scale meanN) (scale allocN) (scale copiedN)) (scale sigmaN)
+        then pure $ Estimate (Measurement (scale meanN) (scale allocN) (scale copiedN)) (scale stdevN)
         else go (2 * n) t2 (sumOfTs + measTime t1)
 
 instance IsTest Benchmarkable where
@@ -954,10 +952,10 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
           && fromIntegral slowDown >= -100 * ifFast
 
 compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Int64
-compareVsBaseline baseline name (Estimate m sigma) = case mOld of
+compareVsBaseline baseline name (Estimate m stdev) = case mOld of
   Nothing -> 0
   Just (oldTime, oldDoubleSigma)
-    | abs (time - oldTime) < max (2 * fromIntegral sigma) oldDoubleSigma -> 0
+    | abs (time - oldTime) < max (2 * fromIntegral stdev) oldDoubleSigma -> 0
     | otherwise -> 100 * (time - oldTime) `quot` oldTime
   where
     time = fromIntegral $ measTime m
