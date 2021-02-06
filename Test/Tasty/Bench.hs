@@ -542,16 +542,15 @@ predict
   -> Measurement -- ^ time for two runs
   -> Estimate
 predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
-  { estMean  = Measurement t a c
+  { estMean  = Measurement t (fit a1 a2) (fit c1 c2)
   , estStdev = truncate (sqrt d :: Double)
   }
   where
+    fit x1 x2 = x1 `quot` 5 + 2 * (x2 `quot` 5)
+    t = fit t1 t2
     sqr x = x * x
     d = sqr (fromIntegral t1 -     fromIntegral t)
       + sqr (fromIntegral t2 - 2 * fromIntegral t)
-    t = (t1 + 2 * t2) `quot` 5
-    a = (a1 + 2 * a2) `quot` 5
-    c = (c1 + 2 * c2) `quot` 5
 
 predictPerturbed :: Measurement -> Measurement -> Estimate
 predictPerturbed t1 t2 = Estimate
@@ -612,8 +611,8 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
       let Estimate (Measurement meanN allocN copiedN) stdevN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
             NoTimeout -> False
-            -- multiplying by 1.2 helps to avoid accidental timeouts
-            Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) * 12 >= fromInteger micros * 1000000 * 10
+            -- multiplying by 12/10 helps to avoid accidental timeouts
+            Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) `quot` (1000000 * 10 `quot` 12) >= fromInteger micros
           isStDevInTargetRange = stdevN < truncate (max 0 targetRelStDev * fromIntegral meanN)
           scale = (`quot` fromIntegral n)
 
@@ -951,13 +950,16 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
           =  fromIntegral slowDown <=  100 * ifSlow
           && fromIntegral slowDown >= -100 * ifFast
 
+-- | Return slow down in percents.
 compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Int64
 compareVsBaseline baseline name (Estimate m stdev) = case mOld of
   Nothing -> 0
   Just (oldTime, oldDoubleSigma)
+    -- time and oldTime must be signed integers to use 'abs'
     | abs (time - oldTime) < max (2 * fromIntegral stdev) oldDoubleSigma -> 0
     | otherwise -> 100 * (time - oldTime) `quot` oldTime
   where
+    time :: Int64
     time = fromIntegral $ measTime m
     mOld = do
       let prefix = encodeCsv name ++ ","
