@@ -1,3 +1,7 @@
+# 0.2.1
+
+* Fix integer overflow in stdev computations.
+
 # 0.2
 
 * Add `env` and `envWithCleanup`.
@@ -6,7 +10,6 @@
 * Add comparison against baseline and relevant options.
 * Export `RelStDev` option.
 * Export `benchIngredients`.
-* Improve stability of measurements.
 
 # 0.1
 

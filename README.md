@@ -40,7 +40,7 @@ benchmark foo
   build-depends:
     tasty-bench
   mixins:
-    tasty-bench (Test.Tasty.Bench as Criterion)
+    tasty-bench (Test.Tasty.Bench as Criterion, Test.Tasty.Bench as Criterion.Main)
 ```
 
 This works vice versa as well: if you use `tasty-bench`, but at some point
