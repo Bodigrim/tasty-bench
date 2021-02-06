@@ -503,20 +503,17 @@ showBytes i
     t :: Double
     t = fromIntegral i
 
--- | It is crucial for precision to make all fields strict and unboxable.
 data Measurement = Measurement
   { measTime   :: !Word64 -- ^ time in picoseconds
   , measAllocs :: !Word64 -- ^ allocations in bytes
   , measCopied :: !Word64 -- ^ copied bytes
   } deriving (Show, Read)
 
--- | It is crucial for precision to make all fields strict and unboxable.
 data Estimate = Estimate
   { estMean  :: !Measurement
   , estSigma :: !Word64  -- ^ stdev in picoseconds
   } deriving (Show, Read)
 
--- | It is crucial for precision to make all fields strict and unboxable.
 data Response = Response
   { respEstimate :: !Estimate
   , respIfSlower :: !FailIfSlower -- ^ saved value of --fail-if-slower
@@ -548,11 +545,12 @@ predict
   -> Estimate
 predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
   { estMean  = Measurement t a c
-  , estSigma = truncate (sqrt (fromIntegral d) :: Double)
+  , estSigma = truncate (sqrt d :: Double)
   }
   where
     sqr x = x * x
-    d = sqr (t1 - t) + sqr (t2 - 2 * t)
+    d = sqr (fromIntegral t1 -     fromIntegral t)
+      + sqr (fromIntegral t2 - 2 * fromIntegral t)
     t = (t1 + 2 * t2) `quot` 5
     a = (a1 + 2 * a2) `quot` 5
     c = (c1 + 2 * c2) `quot` 5
