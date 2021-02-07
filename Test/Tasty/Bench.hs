@@ -680,7 +680,7 @@ funcToBench frc = (Benchmarkable .) . go
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
--- a normal form (by means of 'rnf') of an application of @f@ to @x@.
+-- a normal form (by means of 'force') of an application of @f@ to @x@.
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
@@ -708,7 +708,7 @@ funcToBench frc = (Benchmarkable .) . go
 -- Drop-in replacement for 'Criterion.nf' and 'Gauge.nf'.
 --
 nf :: NFData b => (a -> b) -> a -> Benchmarkable
-nf = funcToBench rnf
+nf = funcToBench force
 {-# INLINE nf #-}
 
 -- | 'whnf' @f@ @x@ measures time to compute
@@ -745,7 +745,7 @@ ioToBench frc act = Benchmarkable go
 {-# INLINE ioToBench #-}
 
 -- | 'nfIO' @x@ measures time to evaluate side-effects of @x@
--- and compute its normal form (by means of 'rnf').
+-- and compute its normal form (by means of 'force').
 --
 -- Pure subexpression of an effectful computation @x@
 -- may be evaluated only once and get cached; use 'nfAppIO'
@@ -763,7 +763,7 @@ ioToBench frc act = Benchmarkable go
 -- Drop-in replacement for 'Criterion.nfIO' and 'Gauge.nfIO'.
 --
 nfIO :: NFData a => IO a -> Benchmarkable
-nfIO = ioToBench rnf
+nfIO = ioToBench force
 {-# INLINE nfIO #-}
 
 -- | 'whnfIO' @x@ measures time to evaluate side-effects of @x@
@@ -800,7 +800,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 
 -- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of
 -- an application of @f@ to @x@.
--- and compute its normal form (by means of 'rnf').
+-- and compute its normal form (by means of 'force').
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
@@ -816,7 +816,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- Drop-in replacement for 'Criterion.nfAppIO' and 'Gauge.nfAppIO'.
 --
 nfAppIO :: NFData b => (a -> IO b) -> a -> Benchmarkable
-nfAppIO = ioFuncToBench rnf
+nfAppIO = ioFuncToBench force
 {-# INLINE nfAppIO #-}
 
 -- | 'whnfAppIO' @f@ @x@ measures time to evaluate side-effects of
