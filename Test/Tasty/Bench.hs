@@ -788,7 +788,7 @@ nfIO = ioToBench force
 --
 -- Drop-in replacement for 'Criterion.whnfIO' and 'Gauge.whnfIO'.
 --
-whnfIO :: NFData a => IO a -> Benchmarkable
+whnfIO :: IO a -> Benchmarkable
 whnfIO = ioToBench id
 {-# INLINE whnfIO #-}
 
