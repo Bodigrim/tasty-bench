@@ -1,3 +1,7 @@
+# 0.2.2
+
+* Remove `NFData` constraint from `whnfIO`.
+
 # 0.2.1
 
 * Fix integer overflow in stdev computations.
