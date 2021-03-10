@@ -7,7 +7,7 @@ A prominent feature is built-in comparison against baseline.
 
 ## How lightweight is it?
 
-There is only one source file `Test.Tasty.Bench` and no external dependencies
+There is only one source file `Test.Tasty.Bench` and no non-boot dependencies
 except [`tasty`](http://hackage.haskell.org/package/tasty).
 So if you already depend on `tasty` for a test suite, there
 is nothing else to install.

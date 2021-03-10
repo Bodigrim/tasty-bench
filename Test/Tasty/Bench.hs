@@ -11,7 +11,7 @@ A prominent feature is built-in comparison against baseline.
 
 === How lightweight is it?
 
-There is only one source file "Test.Tasty.Bench" and no external
+There is only one source file "Test.Tasty.Bench" and no non-boot
 dependencies except [@tasty@](http://hackage.haskell.org/package/tasty). So
 if you already depend on @tasty@ for a test suite, there is nothing else
 to install.
@@ -762,8 +762,9 @@ ioToBench frc act = Benchmarkable go
 -- this traversal may take non-negligible time and affect results.
 --
 -- A typical use case is 'nfIO' ('readFile' @"foo.txt"@).
--- However, if you need I\/O only to read input data from a file,
--- consider using 'env'.
+-- However, if your goal is not to benchmark I\/O per se,
+-- but just read input data from a file, it is cleaner to
+-- use 'env' or 'withResource'.
 --
 -- Drop-in replacement for 'Criterion.nfIO' and 'Gauge.nfIO'.
 --
@@ -783,8 +784,10 @@ nfIO = ioToBench force
 -- Unless you understand precisely, what is measured,
 -- it is recommended to use 'nfIO' instead.
 --
--- Lazy I\/O is treacherous. If you need I\/O only
--- to read input data from a file, consider using 'env'.
+-- Lazy I\/O is treacherous.
+-- If your goal is not to benchmark I\/O per se,
+-- but just read input data from a file, it is cleaner to
+-- use 'env' or 'withResource'.
 --
 -- Drop-in replacement for 'Criterion.whnfIO' and 'Gauge.whnfIO'.
 --
@@ -815,8 +818,9 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- this traversal may take non-negligible time and affect results.
 --
 -- A typical use case is 'nfAppIO' 'readFile' @"foo.txt"@.
--- However, if you need I\/O only to read input data from a file,
--- consider using 'env'.
+-- However, if your goal is not to benchmark I\/O per se,
+-- but just read input data from a file, it is cleaner to
+-- use 'env' or 'withResource'.
 --
 -- Drop-in replacement for 'Criterion.nfAppIO' and 'Gauge.nfAppIO'.
 --
@@ -835,8 +839,10 @@ nfAppIO = ioFuncToBench force
 -- Unless you understand precisely, what is measured,
 -- it is recommended to use 'nfAppIO' instead.
 --
--- Lazy I\/O is treacherous. If you need I\/O only
--- to read input data from a file, consider using 'env'.
+-- Lazy I\/O is treacherous.
+-- If your goal is not to benchmark I\/O per se,
+-- but just read input data from a file, it is cleaner to
+-- use 'env' or 'withResource'.
 --
 -- Drop-in replacement for 'Criterion.whnfAppIO' and 'Gauge.whnfAppIO'.
 --
@@ -956,7 +962,7 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
           && fromIntegral slowDown >= -100 * ifFast
 
 -- | Return slow down in percents.
-compareVsBaseline :: S.Set TestName -> TestName -> Estimate -> Int64
+compareVsBaseline :: S.Set String -> TestName -> Estimate -> Int64
 compareVsBaseline baseline name (Estimate m stdev) = case mOld of
   Nothing -> 0
   Just (oldTime, oldDoubleSigma)
