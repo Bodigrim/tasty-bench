@@ -242,19 +242,33 @@ another way to speed up generation of Fibonacci numbers.
 
 === Troubleshooting
 
-If benchmark results look malformed like below, make sure that you are
-invoking 'Test.Tasty.Bench.defaultMain' and not 'Test.Tasty.defaultMain'
-(the difference is 'consoleBenchReporter' vs. 'consoleTestReporter'):
+-   If benchmarks take too long, set @--timeout@ to limit execution time
+    of individual benchmarks, and @tasty-bench@ will do its best to fit
+    into given timeframe. Without @--timeout@ we rerun benchmarks until
+    achieving a target precision set by @--stdev@, which in a noisy
+    environment of a modern laptop with GUI may take a lot of time.
 
-> All
->   fibo 20:       OK (1.46s)
->     Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
+    While @criterion@ runs each benchmark at least for 5 seconds,
+    @tasty-bench@ is happy to conclude earlier, if it does not
+    compromise the quality of results. In our experiments @tasty-bench@
+    suites tend to finish earlier, even if some individual benchmarks
+    take longer than with @criterion@.
+
+-   If benchmark results look malformed like below, make sure that you
+    are invoking 'Test.Tasty.Bench.defaultMain' and not
+    'Test.Tasty.defaultMain' (the difference is 'consoleBenchReporter'
+    vs. 'consoleTestReporter'):
+
+    > All
+    >   fibo 20:       OK (1.46s)
+    >     Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
 
 === Comparison against baseline
 
 One can compare benchmark results against an earlier baseline in an
 automatic way. To use this feature, first run @tasty-bench@ with
-@--csv@ @FILE@ key to dump results to @FILE@ in CSV format:
+@--csv@ @FILE@ key to dump results to @FILE@ in CSV format
+(it could be a good idea to set smaller @--stdev@, if possible):
 
 > Name,Mean (ps),2*Stdev (ps)
 > All.fibonacci numbers.fifth,48453,4060
