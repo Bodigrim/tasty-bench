@@ -416,6 +416,7 @@ import Test.Tasty.Options
 import Test.Tasty.Providers
 import Test.Tasty.Runners
 import Text.Printf
+import System.Exit
 import System.IO
 import System.IO.Unsafe
 
@@ -907,9 +908,15 @@ csvReporter :: Ingredient
 csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
   \opts tree -> do
     CsvPath path <- lookupOption opts
-    let names = IM.fromDistinctAscList $ zip [0..] (testsNames opts tree)
+    let names = testsNames opts tree
+        namesMap = IM.fromDistinctAscList $ zip [0..] names
     pure $ \smap -> do
-      let augmented = IM.intersectionWith (,) names smap
+      case lookupRepeatingElements names of
+        Nothing -> pure ()
+        Just name -> do -- 'die' is not available before base-4.8
+          hPutStrLn stderr $ "CSV report cannot proceed, because name '" ++ name ++ "' corresponds to two or more benchmarks. Please disambiguate them."
+          exitFailure
+      let augmented = IM.intersectionWith (,) namesMap smap
       hasGCStats <- getRTSStatsEnabled
       bracket
         (do
@@ -922,6 +929,14 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
         hClose
         (`csvOutput` augmented)
       pure $ const ((== 0) . statFailures <$> computeStatistics smap)
+
+lookupRepeatingElements :: Ord a => [a] -> Maybe a
+lookupRepeatingElements = go S.empty
+  where
+    go _ [] = Nothing
+    go acc (x : xs)
+      | x `S.member` acc = Just x
+      | otherwise = go (S.insert x acc) xs
 
 csvOutput :: Handle -> IntMap (TestName, TVar Status) -> IO ()
 csvOutput h = traverse_ $ \(name, tv) -> do
@@ -986,9 +1001,20 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
   where
     time :: Int64
     time = fromIntegral $ measTime m
+
+    mOld :: Maybe (Int64, Int64)
     mOld = do
       let prefix = encodeCsv name ++ ","
-      line <- lookupGE prefix baseline
+      (line, furtherLines) <- S.minView $ snd $ S.split prefix baseline
+
+      case S.minView furtherLines of
+        Nothing -> pure ()
+        Just (nextLine, _) -> case stripPrefix prefix nextLine of
+          Nothing -> pure ()
+          -- If there are several lines matching prefix, skip them all.
+          -- Should not normally happen, 'csvReporter' prohibits repeating test names.
+          Just{}  -> Nothing
+
       (timeCell, ',' : rest) <- span (/= ',') <$> stripPrefix prefix line
       let doubleSigmaCell = takeWhile (/= ',') rest
       (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
@@ -1001,11 +1027,6 @@ formatSlowDown n = case n `compare` 0 of
 
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
-
-#if !MIN_VERSION_containers(0,5,0)
-lookupGE :: TestName -> S.Set TestName -> Maybe TestName
-lookupGE x = fmap fst . S.minView . S.filter (x `isPrefixOf`)
-#endif
 
 modifyConsoleReporter :: [OptionDescription] -> (OptionSet -> IO (TestName -> Result -> Result)) -> Ingredient
 modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
