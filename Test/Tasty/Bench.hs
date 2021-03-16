@@ -263,6 +263,16 @@ another way to speed up generation of Fibonacci numbers.
     >   fibo 20:       OK (1.46s)
     >     Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
 
+-   If benchmarks fail with an error message
+
+    > Unhandled resource. Probably a bug in the runner you're using.
+
+    this is probably caused by 'env' or 'envWithCleanup' affecting
+    benchmarks structure. You can use 'env' to read test data from 'IO',
+    but not to read benchmark names or affect their hierarchy in other
+    way. This is a fundamental restriction of @tasty@ to list and filter
+    benchmarks without launching missiles.
+
 === Comparison against baseline
 
 One can compare benchmark results against an earlier baseline in an
@@ -704,6 +714,13 @@ funcToBench frc = (Benchmarkable .) . go
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
+-- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- be an infinite structure. Thus @x@ will be evaluated in course of the first
+-- application of @f@. This noisy measurement is to be discarded soon,
+-- but if @x@ is not a primitive data type, consider forcing its evaluation
+-- separately, e. g., via 'env' or 'withResource'.
+--
 -- Here is a textbook antipattern: 'nf' 'sum' @[1..1000000]@.
 -- Since an input list is shared by multiple invocations of 'sum',
 -- it will be allocated in memory in full, putting immense pressure
@@ -735,6 +752,13 @@ nf = funcToBench force
 -- a weak head normal form of an application of @f@ to @x@.
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
+--
+-- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- be an infinite structure. Thus @x@ will be evaluated in course of the first
+-- application of @f@. This noisy measurement is to be discarded soon,
+-- but if @x@ is not a primitive data type, consider forcing its evaluation
+-- separately, e. g., via 'env' or 'withResource'.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
@@ -827,6 +851,13 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
+-- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- be an infinite structure. Thus @x@ will be evaluated in course of the first
+-- application of @f@. This noisy measurement is to be discarded soon,
+-- but if @x@ is not a primitive data type, consider forcing its evaluation
+-- separately, e. g., via 'env' or 'withResource'.
+--
 -- Note that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
 -- especially when 'NFData' instance is badly written,
@@ -848,6 +879,13 @@ nfAppIO = ioFuncToBench force
 -- and compute its weak head normal form.
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
+--
+-- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- be an infinite structure. Thus @x@ will be evaluated in course of the first
+-- application of @f@. This noisy measurement is to be discarded soon,
+-- but if @x@ is not a primitive data type, consider forcing its evaluation
+-- separately, e. g., via 'env' or 'withResource'.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
@@ -875,6 +913,14 @@ whnfAppIO = ioFuncToBench id
 --
 -- Provided only for the sake of compatibility with 'Criterion.env' and 'Gauge.env',
 -- and involves 'unsafePerformIO'. Consider using 'withResource' instead.
+--
+-- 'defaultMain' requires that the hierarchy of benchmarks and their names is
+-- independent of underlying 'IO' actions. While executing 'IO' inside 'bench'
+-- via 'nfIO' is fine, and reading test data from files via 'env' is also fine,
+-- using 'env' to choose benchmarks or their names depending on 'IO' side effects
+-- will throw a rather cryptic error message:
+--
+-- > Unhandled resource. Probably a bug in the runner you're using.
 --
 env :: NFData env => IO env -> (env -> Benchmark) -> Benchmark
 env res = envWithCleanup res (const $ pure ())

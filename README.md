@@ -5,6 +5,22 @@ with API mimicking [`criterion`](http://hackage.haskell.org/package/criterion)
 and [`gauge`](http://hackage.haskell.org/package/gauge).
 A prominent feature is built-in comparison against baseline.
 
+<!-- MarkdownTOC autolink="true" -->
+
+- [How lightweight is it?](#how-lightweight-is-it)
+- [How is it possible?](#how-is-it-possible)
+- [How to switch?](#how-to-switch)
+- [How to write a benchmark?](#how-to-write-a-benchmark)
+- [How to read results?](#how-to-read-results)
+- [Statistical model](#statistical-model)
+- [Memory usage](#memory-usage)
+- [Combining tests and benchmarks](#combining-tests-and-benchmarks)
+- [Troubleshooting](#troubleshooting)
+- [Comparison against baseline](#comparison-against-baseline)
+- [Command-line options](#command-line-options)
+
+<!-- /MarkdownTOC -->
+
 ## How lightweight is it?
 
 There is only one source file `Test.Tasty.Bench` and no non-boot dependencies
@@ -275,6 +291,17 @@ look for another way to speed up generation of Fibonacci numbers.
     fibo 20:       OK (1.46s)
       Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
   ```
+
+* If benchmarks fail with an error message
+
+  ```
+  Unhandled resource. Probably a bug in the runner you're using.
+  ```
+
+  this is probably caused by `env` or `envWithCleanup` affecting benchmarks structure.
+  You can use `env` to read test data from `IO`, but not to read benchmark names
+  or affect their hierarchy in other way. This is a fundamental restriction of `tasty`
+  to list and filter benchmarks without launching missiles.
 
 ## Comparison against baseline
 
