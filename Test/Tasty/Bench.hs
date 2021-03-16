@@ -65,6 +65,7 @@ Benchmarks are declared in a separate section of @cabal@ file:
 > benchmark bench-fibo
 >   main-is:       BenchFibo.hs
 >   type:          exitcode-stdio-1.0
+>   ghc-options:   "-with-rtsopts=-A32m"
 >   build-depends: base, tasty-bench
 
 And here is @BenchFibo.hs@:
@@ -244,7 +245,7 @@ another way to speed up generation of Fibonacci numbers.
 
 -   If benchmarks take too long, set @--timeout@ to limit execution time
     of individual benchmarks, and @tasty-bench@ will do its best to fit
-    into given timeframe. Without @--timeout@ we rerun benchmarks until
+    into a given time frame. Without @--timeout@ we rerun benchmarks until
     achieving a target precision set by @--stdev@, which in a noisy
     environment of a modern laptop with GUI may take a lot of time.
 
@@ -253,6 +254,12 @@ another way to speed up generation of Fibonacci numbers.
     compromise the quality of results. In our experiments @tasty-bench@
     suites tend to finish earlier, even if some individual benchmarks
     take longer than with @criterion@.
+
+    A common source of noisiness is garbage collection. Setting a larger
+    allocation area (/nursery/) is often a good idea, either via
+    @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-A32m\'@ or
+    @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into @cabal@
+    file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
 
 -   If benchmark results look malformed like below, make sure that you
     are invoking 'Test.Tasty.Bench.defaultMain' and not
