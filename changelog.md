@@ -1,3 +1,7 @@
+# 0.2.3
+
+* Prohibit duplicated benchmark names in CSV reports.
+
 # 0.2.2
 
 * Remove `NFData` constraint from `whnfIO`.
