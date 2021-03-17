@@ -280,6 +280,64 @@ another way to speed up generation of Fibonacci numbers.
     way. This is a fundamental restriction of @tasty@ to list and filter
     benchmarks without launching missiles.
 
+=== Isolating interfering benchmarks
+
+One difficulty of benchmarking in Haskell is that it is hard to isolate
+benchmarks so that they do not interfere. Changing the order of
+benchmarks or skipping some of them has an effect on heap’s layout and
+thus affects garbage collection. This issue is well attested in
+<https://github.com/haskell/criterion/issues/166 both>
+<https://github.com/haskell/criterion/issues/60 criterion> and
+<https://github.com/vincenthz/hs-gauge/issues/2 gauge>.
+
+Usually (but not always) skipping some benchmarks speeds up remaining
+ones. That’s because once a benchmark allocated heap which for some
+reason was not promptly released afterwards (e. g., it forced a
+top-level thunk in an underlying library), all further benchmarks are
+slowed down by garbage collector processing this additional amount of
+live data over and over again.
+
+There are several mitigation strategies. First of all, giving garbage
+collector more breathing space by @+RTS@ @-A32m@ (or more) is often good
+enough.
+
+Further, avoid using top-level bindings to store large test data. Once
+such thunks are forced, they remain allocated forever, which affects
+detrimentally subsequent unrelated benchmarks. Treat them as external
+data, supplied via 'env': instead of
+
+> largeData :: String
+> largeData = replicate 1000000 'a'
+>
+> main :: IO ()
+> main = defaultMain
+>   [ bench "large" $ nf length largeData, ... ]
+
+use
+
+> import Control.DeepSeq (force)
+> import Control.Exception (evaluate)
+>
+> main :: IO ()
+> main = defaultMain
+>   [ env (evaluate (force (replicate 1000000 'a'))) $ \largeData ->
+>     bench "large" $ nf length largeData, ... ]
+
+Finally, as an ultimate measure to reduce interference between
+benchmarks, one can run each of them in a separate process. We do not
+quite recommend this approach, but if you are desperate, here is how.
+
+Assuming that a benchmark is declared in @cabal@ file as
+@benchmark@ @my-bench@ component, let’s first find its executable:
+
+> cabal build --enable-benchmarks my-bench
+> MYBENCH=`cabal list-bin my-bench`
+
+Now list all benchmark names (hopefully, they do not contain newlines),
+escape quotes and slashes, and run each of them separately:
+
+> $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'$name'"'; done
+
 === Comparison against baseline
 
 One can compare benchmark results against an earlier baseline in an
@@ -402,8 +460,8 @@ module Test.Tasty.Bench
 
 import Prelude hiding (Int, Integer)
 import Control.Applicative
-import Control.DeepSeq
-import Control.Exception
+import Control.DeepSeq (NFData, force)
+import Control.Exception (bracket, evaluate)
 import Control.Monad (void, unless, guard, (>=>))
 import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
@@ -918,7 +976,29 @@ whnfAppIO = ioFuncToBench id
 -- dangling in the heap causes longer garbage collection
 -- and slows down all benchmarks, even those which do not use it at all.
 --
--- Provided only for the sake of compatibility with 'Criterion.env' and 'Gauge.env',
+-- It is instrumental not only for proper 'IO' actions,
+-- but also for a large statically-known data as well. Instead of a top-level
+-- definition, which once evaluated will slow down garbage collection
+-- during all subsequent benchmarks,
+--
+-- > largeData :: String
+-- > largeData = replicate 1000000 'a'
+-- >
+-- > main :: IO ()
+-- > main = defaultMain
+-- >   [ bench "large" $ nf length largeData, ... ]
+--
+-- use
+--
+-- > import Control.DeepSeq (force)
+-- > import Control.Exception (evaluate)
+-- >
+-- > main :: IO ()
+-- > main = defaultMain
+-- >   [ env (evaluate (force (replicate 1000000 'a'))) $ \largeData ->
+-- >     bench "large" $ nf length largeData, ... ]
+--
+-- 'env' is provided only for the sake of compatibility with 'Criterion.env' and 'Gauge.env',
 -- and involves 'unsafePerformIO'. Consider using 'withResource' instead.
 --
 -- 'defaultMain' requires that the hierarchy of benchmarks and their names is

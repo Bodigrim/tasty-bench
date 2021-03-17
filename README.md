@@ -16,6 +16,7 @@ A prominent feature is built-in comparison against baseline.
 - [Memory usage](#memory-usage)
 - [Combining tests and benchmarks](#combining-tests-and-benchmarks)
 - [Troubleshooting](#troubleshooting)
+- [Isolating interfering benchmarks](#isolating-interfering-benchmarks)
 - [Comparison against baseline](#comparison-against-baseline)
 - [Command-line options](#command-line-options)
 
@@ -309,6 +310,72 @@ look for another way to speed up generation of Fibonacci numbers.
   You can use `env` to read test data from `IO`, but not to read benchmark names
   or affect their hierarchy in other way. This is a fundamental restriction of `tasty`
   to list and filter benchmarks without launching missiles.
+
+## Isolating interfering benchmarks
+
+One difficulty of benchmarking in Haskell is that it is
+hard to isolate benchmarks so that they do not interfere.
+Changing the order of benchmarks or skipping some of them
+has an effect on heap's layout and thus affects garbage collection.
+This issue is well attested in
+[`both`](https://github.com/haskell/criterion/issues/166)
+[`criterion`](https://github.com/haskell/criterion/issues/60)
+and
+[`gauge`](https://github.com/vincenthz/hs-gauge/issues/2).
+
+Usually (but not always) skipping some benchmarks speeds up remaining ones.
+That's because once a benchmark allocated heap which for some reason
+was not promptly released afterwards (e. g., it forced a top-level thunk
+in an underlying library), all further benchmarks are slowed down
+by garbage collector processing this additional amount of live data
+over and over again.
+
+There are several mitigation strategies. First of all, giving garbage collector
+more breathing space by `+RTS -A32m` (or more) is often good enough.
+
+Further, avoid using top-level bindings to store large test data. Once such thunks
+are forced, they remain allocated forever, which affects detrimentally subsequent
+unrelated benchmarks. Treat them as external data, supplied via `env`: instead of
+
+```haskell
+largeData :: String
+largeData = replicate 1000000 'a'
+
+main :: IO ()
+main = defaultMain
+  [ bench "large" $ nf length largeData, ... ]
+```
+
+use
+
+```haskell
+import Control.DeepSeq (force)
+import Control.Exception (evaluate)
+
+main :: IO ()
+main = defaultMain
+  [ env (evaluate (force (replicate 1000000 'a'))) $ \largeData ->
+    bench "large" $ nf length largeData, ... ]
+```
+
+Finally, as an ultimate measure to reduce interference between benchmarks,
+one can run each of them in a separate process. We do not quite recommend
+this approach, but if you are desperate, here is how.
+
+Assuming that a benchmark is declared in `cabal` file as `benchmark my-bench` component,
+let's first find its executable:
+
+```bash
+cabal build --enable-benchmarks my-bench
+MYBENCH=`cabal list-bin my-bench`
+```
+
+Now list all benchmark names (hopefully, they do not contain newlines),
+escape quotes and slashes, and run each of them separately:
+
+```bash
+$MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'$name'"'; done
+```
 
 ## Comparison against baseline
 
