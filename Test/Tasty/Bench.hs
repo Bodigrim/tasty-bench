@@ -65,8 +65,11 @@ Benchmarks are declared in a separate section of @cabal@ file:
 > benchmark bench-fibo
 >   main-is:       BenchFibo.hs
 >   type:          exitcode-stdio-1.0
->   ghc-options:   "-with-rtsopts=-A32m"
 >   build-depends: base, tasty-bench
+>   if impl(ghc >= 8.10)
+>     ghc-options:  "-with-rtsopts=-A32m --nonmoving-gc"
+>   else
+>     ghc-options:  "-with-rtsopts=-A32m"
 
 And here is @BenchFibo.hs@:
 
@@ -260,6 +263,9 @@ another way to speed up generation of Fibonacci numbers.
     @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-A32m\'@ or
     @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into @cabal@
     file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
+
+    For GHC >= 8.10 consider switching benchmarks to a non-moving garbage collector,
+    because it decreases GC pauses and corresponding noise: @+RTS@ @--nonmoving-gc@.
 
 -   If benchmark results look malformed like below, make sure that you
     are invoking 'Test.Tasty.Bench.defaultMain' and not
