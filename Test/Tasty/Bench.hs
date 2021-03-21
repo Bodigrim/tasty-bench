@@ -468,7 +468,7 @@ import Prelude hiding (Int, Integer)
 import Control.Applicative
 import Control.DeepSeq (NFData, force)
 import Control.Exception (bracket, evaluate)
-import Control.Monad (void, unless, guard, (>=>))
+import Control.Monad (void, unless, guard, (>=>), when)
 import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
@@ -716,10 +716,17 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
             Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) `quot` (1000000 * 10 `quot` 12) >= fromInteger micros
           isStDevInTargetRange = stdevN < truncate (max 0 targetRelStDev * fromIntegral meanN)
           scale = (`quot` fromIntegral n)
+          sumOfTs' = sumOfTs + measTime t1
+
+      case timeout of
+        NoTimeout | sumOfTs' > 100 * 1000000000000
+          -> hPutStrLn stderr "This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning)."
+        _ -> pure ()
+
 
       if isStDevInTargetRange || isTimeoutSoon
         then pure $ Estimate (Measurement (scale meanN) (scale allocN) (scale copiedN)) (scale stdevN)
-        else go (2 * n) t2 (sumOfTs + measTime t1)
+        else go (2 * n) t2 sumOfTs'
 
 instance IsTest Benchmarkable where
   testOptions = pure
