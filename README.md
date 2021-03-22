@@ -3,7 +3,8 @@
 Featherlight benchmark framework (only one file!) for performance measurement
 with API mimicking [`criterion`](http://hackage.haskell.org/package/criterion)
 and [`gauge`](http://hackage.haskell.org/package/gauge).
-A prominent feature is built-in comparison against baseline.
+A prominent feature is built-in comparison against previous runs
+and between benchmarks.
 
 <!-- MarkdownTOC autolink="true" -->
 
@@ -18,6 +19,7 @@ A prominent feature is built-in comparison against baseline.
 - [Troubleshooting](#troubleshooting)
 - [Isolating interfering benchmarks](#isolating-interfering-benchmarks)
 - [Comparison against baseline](#comparison-against-baseline)
+- [Comparison between benchmarks](#comparison-between-benchmarks)
 - [Command-line options](#command-line-options)
 
 <!-- /MarkdownTOC -->
@@ -425,6 +427,49 @@ deviation is less than 6%). Consider also using `--hide-successes` to show
 only problematic benchmarks, or even
 [`tasty-rerun`](http://hackage.haskell.org/package/tasty-rerun) package
 to focus on rerunning failing items only.
+
+## Comparison between benchmarks
+
+You can also compare benchmarks to each other without reaching to external tools,
+all in the comfort of your terminal.
+
+```haskell
+import Test.Tasty.Bench
+
+fibo :: Int -> Integer
+fibo n = if n < 2 then toInteger n else fibo (n - 1) + fibo (n - 2)
+
+main :: IO ()
+main = defaultMain
+  [ bgroup "fibonacci numbers"
+    [ bcompare "tenth"  $ bench "fifth"     $ nf fibo  5
+    ,                     bench "tenth"     $ nf fibo 10
+    , bcompare "tenth"  $ bench "twentieth" $ nf fibo 20
+    ]
+  ]
+```
+
+This produces a report, comparing mean times of `fifth` and `twentieth` to `tenth`:
+
+```
+All
+  fibonacci numbers
+    fifth:     OK (16.56s)
+      121 ns ± 2.6 ns, 0.08x
+    tenth:     OK (6.84s)
+      1.6 μs ±  31 ns
+    twentieth: OK (6.96s)
+      203 μs ± 4.1 μs, 128.36x
+```
+
+Locating a baseline benchmark in larger suites could get tricky;
+
+```haskell
+bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
+```
+
+is a more robust choice of
+an [`awk` pattern](https://github.com/feuerbach/tasty#patterns) here.
 
 ## Command-line options
 

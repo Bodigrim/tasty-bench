@@ -7,7 +7,8 @@ Featherlight benchmark framework (only one file!) for performance
 measurement with API
 mimicking [@criterion@](http://hackage.haskell.org/package/criterion)
 and [@gauge@](http://hackage.haskell.org/package/gauge).
-A prominent feature is built-in comparison against baseline.
+A prominent feature is built-in comparison against previous runs
+and between benchmarks.
 
 === How lightweight is it?
 
@@ -384,6 +385,44 @@ also using @--hide-successes@ to show only problematic benchmarks, or
 even [@tasty-rerun@](http://hackage.haskell.org/package/tasty-rerun)
 package to focus on rerunning failing items only.
 
+=== Comparison between benchmarks
+
+You can also compare benchmarks to each other without reaching to
+external tools, all in the comfort of your terminal.
+
+> import Test.Tasty.Bench
+>
+> fibo :: Int -> Integer
+> fibo n = if n < 2 then toInteger n else fibo (n - 1) + fibo (n - 2)
+>
+> main :: IO ()
+> main = defaultMain
+>   [ bgroup "fibonacci numbers"
+>     [ bcompare "tenth"  $ bench "fifth"     $ nf fibo  5
+>     ,                     bench "tenth"     $ nf fibo 10
+>     , bcompare "tenth"  $ bench "twentieth" $ nf fibo 20
+>     ]
+>   ]
+
+This produces a report, comparing mean times of @fifth@ and @twentieth@
+to @tenth@:
+
+> All
+>   fibonacci numbers
+>     fifth:     OK (16.56s)
+>       121 ns ± 2.6 ns, 0.08x
+>     tenth:     OK (6.84s)
+>       1.6 μs ±  31 ns
+>     twentieth: OK (6.96s)
+>       203 μs ± 4.1 μs, 128.36x
+
+Locating a baseline benchmark in larger suites could get tricky;
+
+> bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
+
+is a more robust choice of
+an <https://github.com/feuerbach/tasty#patterns awk pattern> here.
+
 === Command-line options
 
 Use @--help@ to list command-line options.
@@ -445,6 +484,7 @@ module Test.Tasty.Bench
   , Benchmark
   , bench
   , bgroup
+  , bcompare
   , env
   , envWithCleanup
   -- * Creating 'Benchmarkable'
@@ -466,6 +506,7 @@ module Test.Tasty.Bench
 
 import Prelude hiding (Int, Integer)
 import Control.Applicative
+import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force)
 import Control.Exception (bracket, evaluate)
 import Control.Monad (void, unless, guard, (>=>), when)
@@ -477,6 +518,8 @@ import qualified Data.IntMap as IM
 import Data.List (intercalate, stripPrefix, isPrefixOf)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
+import Data.Sequence (Seq, (<|))
+import qualified Data.Sequence as Seq
 #if MIN_VERSION_containers(0,5,0)
 import Data.Set (lookupGE)
 #endif
@@ -494,6 +537,8 @@ import qualified Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import Test.Tasty.Options
+import Test.Tasty.Patterns.Eval (eval, asB, withFields)
+import Test.Tasty.Patterns.Types (Expr (And, StringLit))
 import Test.Tasty.Providers
 import Test.Tasty.Runners
 import Text.Printf
@@ -758,6 +803,26 @@ bench = singleTest
 --
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup = testGroup
+
+-- | Compare benchmarks, reporting relative speed up or slow down.
+--
+-- The first argument is a @tasty@ pattern, which must unambiguously
+-- match a unique baseline benchmark. Locating a benchmark in a global environment
+-- may be tricky, please refer to
+-- [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns) for details.
+--
+-- A benchmark (or a group of benchmarks), specified in the second argument,
+-- will be compared against the baseline benchmark by dividing measured mean times.
+-- The result is reported by 'consoleBenchReporter', e. g., 0.50x or 1.25x.
+--
+-- This function is a vague reminiscence of @bcompare@, which existed in pre-1.0
+-- versions of @criterion@, but their types are incompatible. Under the hood
+-- 'bcompare' is a thin wrapper over 'after'.
+--
+bcompare :: String -> Benchmark -> Benchmark
+bcompare s = case parseExpr s of
+  Nothing -> error $ "Could not parse bcompare pattern " ++ s
+  Just e  -> after_ AllSucceed (And (StringLit "tasty-bench") e)
 
 -- | Benchmarks are actually just a regular 'Test.Tasty.TestTree' in disguise.
 --
@@ -1125,16 +1190,22 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
     Just (BaselinePath path) -> S.fromList . lines <$> (readFile path >>= evaluate . force)
   hasGCStats <- getRTSStatsEnabled
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
-  pure $ \name r -> case safeRead (resultDescription r) of
+  pure $ \name depR r -> case safeRead (resultDescription r) of
     Nothing  -> r
     Just (Response est (FailIfSlower ifSlow) (FailIfFaster ifFast)) ->
       (if isAcceptable then id else forceFail)
-      r { resultDescription = pretty est ++ formatSlowDown slowDown }
+      r { resultDescription = pretty est ++ bcomp ++ formatSlowDown slowDown }
       where
         slowDown = compareVsBaseline baseline name est
         isAcceptable -- ifSlow/ifFast may be infinite, so we cannot 'truncate'
           =  fromIntegral slowDown <=  100 * ifSlow
           && fromIntegral slowDown >= -100 * ifFast
+        bcomp = case depR >>= safeRead . resultDescription of
+          Nothing -> ""
+          Just (Response depEst _ _) -> printf ", %.2fx" (estTime est / estTime depEst)
+
+estTime :: Estimate -> Double
+estTime = fromIntegral . measTime . estMean
 
 -- | Return slow down in percents.
 compareVsBaseline :: S.Set String -> TestName -> Estimate -> Int64
@@ -1174,20 +1245,55 @@ formatSlowDown n = case n `compare` 0 of
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
 
-modifyConsoleReporter :: [OptionDescription] -> (OptionSet -> IO (TestName -> Result -> Result)) -> Ingredient
+modifyConsoleReporter
+    :: [OptionDescription]
+    -> (OptionSet -> IO (TestName -> Maybe Result -> Result -> Result))
+    -> Ingredient
 modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
-  let names = IM.fromDistinctAscList $ zip [0..] (testsNames opts tree)
-      modifySMap = (iof opts >>=) . flip postprocessResult . IM.intersectionWith (,) names
+  let nameSeqs     = IM.fromDistinctAscList $ zip [0..] $ testNameSeqs opts tree
+      namesAndDeps = IM.fromDistinctAscList $ zip [0..] $ map (second isSingle)
+                   $ testNamesAndDeps nameSeqs opts tree
+      modifySMap   = (iof opts >>=) . flip postprocessResult
+                   . IM.intersectionWith (\(a, b) c -> (a, b, c)) namesAndDeps
   in (modifySMap >=>) <$> cb opts tree
   where
     TestReporter desc cb = consoleTestReporter
 
-postprocessResult :: (TestName -> Result -> Result) -> IntMap (TestName, TVar Status) -> IO StatusMap
+    isSingle [a] = Just a
+    isSingle _ = Nothing
+
+testNameSeqs :: OptionSet -> TestTree -> [Seq TestName]
+testNameSeqs = foldTestTree trivialFold
+  { foldSingle = const $ const . (:[]) . Seq.singleton
+  , foldGroup  = const $ map . (<|)
+  }
+
+testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, [IM.Key])]
+testNamesAndDeps im = foldTestTree trivialFold
+  { foldSingle = const $ const . (: []) . (, [])
+  , foldGroup  = const $ map . first . flip (++) . (++ ".")
+  , foldAfter  = const foldDeps
+  }
+  where
+    foldDeps AllSucceed (And (StringLit "tasty-bench") p) =
+      map $ second $ (++) $ findMatchingKeys im p
+    foldDeps _ _ = id
+
+findMatchingKeys :: IntMap (Seq TestName) -> Expr -> [IM.Key]
+findMatchingKeys im pattern =
+  foldr (\(k, v) -> if withFields v pat == Right True then (k :) else id) [] $ IM.assocs im
+  where
+    pat = eval pattern >>= asB
+
+postprocessResult
+    :: (TestName -> Maybe Result -> Result -> Result)
+    -> IntMap (TestName, Maybe IM.Key, TVar Status)
+    -> IO StatusMap
 postprocessResult f src = do
-  paired <- forM src $ \(name, tv) -> (name, tv,) <$> newTVarIO NotStarted
+  paired <- forM src $ \(name, mDepId, tv) -> (name, mDepId, tv,) <$> newTVarIO NotStarted
   let doUpdate = atomically $ do
         (Any anyUpdated, All allDone) <-
-          getApp $ flip foldMap paired $ \(name, newTV, oldTV) -> Ap $ do
+          getApp $ flip foldMap paired $ \(name, mDepId, newTV, oldTV) -> Ap $ do
             old <- readTVar oldTV
             case old of
               Done{} -> pure (Any False, All True)
@@ -1195,12 +1301,21 @@ postprocessResult f src = do
                 new <- readTVar newTV
                 case new of
                   Done res -> do
-                    writeTVar oldTV (Done (f name res))
+
+                    depRes <- case mDepId >>= (`IM.lookup` src) of
+                      Nothing -> pure Nothing
+                      Just (_, _, depTV) -> do
+                        depStatus <- readTVar depTV
+                        case depStatus of
+                          Done dep -> pure $ Just dep
+                          _ -> pure Nothing
+
+                    writeTVar oldTV (Done (f name depRes res))
                     pure (Any True, All True)
                   -- ignoring Progress nodes, we do not report any
-                  -- it would be helpful to have instance Eq Status
+                  -- it would be helpful to have instance Eq Progress
                   _ -> pure (Any False, All False)
         if anyUpdated || allDone then pure allDone else retry
       adNauseam = doUpdate >>= (`unless` adNauseam)
   _ <- forkIO adNauseam
-  pure $ fmap (\(_, _, a) -> a) paired
+  pure $ fmap (\(_, _, _, a) -> a) paired

@@ -14,7 +14,7 @@ description:
   Featherlight framework (only one file!)
   for performance measurement with API mimicking
   @criterion@ and @gauge@, featuring built-in comparison
-  against baseline. Our benchmarks are just
+  against previous runs and between benchmarks. Our benchmarks are just
   regular @tasty@ tests.
 
 extra-source-files:
