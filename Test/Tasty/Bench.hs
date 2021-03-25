@@ -499,6 +499,7 @@ module Test.Tasty.Bench
   , benchIngredients
   , consoleBenchReporter
   , csvReporter
+  , svgReporter
   , RelStDev(..)
   , FailIfSlower(..)
   , FailIfFaster(..)
@@ -515,7 +516,8 @@ import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
-import Data.List (intercalate, stripPrefix, isPrefixOf)
+import Data.IORef
+import Data.List (intercalate, stripPrefix, isPrefixOf, foldl', genericLength, genericDrop)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Sequence (Seq, (<|))
@@ -840,7 +842,7 @@ defaultMain = Test.Tasty.defaultMainWithIngredients benchIngredients . testGroup
 -- | List of default benchmark ingredients. This is what 'defaultMain' runs.
 --
 benchIngredients :: [Ingredient]
-benchIngredients = [listingTests, composeReporters consoleBenchReporter csvReporter]
+benchIngredients = [listingTests, composeReporters consoleBenchReporter (composeReporters csvReporter svgReporter)]
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
@@ -1165,6 +1167,123 @@ encodeCsv xs
   | any (`elem` xs) ",\"\n\r"
   = '"' : concatMap (\x -> if x == '"' then "\"\"" else [x]) xs ++ "\""
   | otherwise = xs
+
+newtype SvgPath = SvgPath { _unSvgPath :: FilePath }
+  deriving (Typeable)
+
+instance IsOption (Maybe SvgPath) where
+  defaultValue = Nothing
+  parseValue = Just . Just . SvgPath
+  optionName = pure "svg"
+  optionHelp = pure "File to plot results in SVG format"
+
+-- | Run benchmarks and plot results in SVG format.
+-- It activates when @--svg@ @FILE@ command line option is specified.
+--
+svgReporter :: Ingredient
+svgReporter = TestReporter [Option (Proxy :: Proxy (Maybe SvgPath))] $
+  \opts tree -> do
+    SvgPath path <- lookupOption opts
+    let names = testsNames opts tree
+        namesMap = IM.fromDistinctAscList $ zip [0..] names
+    pure $ \smap -> do
+      ref <- newIORef []
+      svgCollect ref (IM.intersectionWith (,) namesMap smap)
+      res <- readIORef ref
+      writeFile path (svgRender (reverse res))
+      pure $ const ((== 0) . statFailures <$> computeStatistics smap)
+
+svgCollect :: IORef [(TestName, Estimate)] -> IntMap (TestName, TVar Status) -> IO ()
+svgCollect ref = traverse_ $ \(name, tv) -> do
+  r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
+  case safeRead (resultDescription r) of
+    Nothing -> pure ()
+    Just (Response est _ _) -> modifyIORef ref ((name, est) :)
+
+svgRender :: [(TestName, Estimate)] -> String
+svgRender [] = ""
+svgRender pairs = header ++ concat (zipWith
+  (\i (name, est) -> svgRenderItem i l xMax (dropAllPrefix name) est)
+  [0..]
+  pairs) ++ footer
+  where
+    dropAllPrefix
+      | all ("All." `isPrefixOf`) (map fst pairs) = drop 4
+      | otherwise = id
+
+    l = genericLength pairs
+    findMaxX (Estimate m stdev) = measTime m + 2 * stdev
+    xMax = fromIntegral $ maximum $ minBound : map (findMaxX . snd) pairs
+    header = printf "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"%i\" width=\"%f\" font-size=\"%i\" font-family=\"sans-serif\" stroke-width=\"2\">\n<g transform=\"translate(%f 0)\">\n" (svgItemOffset l - 15) svgCanvasWidth svgFontSize svgCanvasMargin
+    footer = "</g>\n</svg>\n"
+
+svgCanvasWidth :: Double
+svgCanvasWidth = 960
+
+svgCanvasMargin :: Double
+svgCanvasMargin = 10
+
+svgItemOffset :: Word64 -> Word64
+svgItemOffset i = 22 + 55 * fromIntegral i
+
+svgFontSize :: Word64
+svgFontSize = 16
+
+svgRenderItem :: Word64 -> Word64 -> Double -> TestName -> Estimate -> String
+svgRenderItem i iMax xMax name est@(Estimate m stdev) =
+  (if genericLength shortTextContent * glyphWidth < boxWidth then longText else shortText) ++ box
+  where
+    y  = svgItemOffset i
+    y' = y  + (svgFontSize * 3) `quot` 8
+    y1 = y' + whiskerMargin
+    y2 = y' + boxHeight `quot` 2
+    y3 = y' + boxHeight - whiskerMargin
+    x1 = boxWidth - whiskerWidth
+    x2 = boxWidth + whiskerWidth
+    deg = (i * 360) `quot` iMax
+    glyphWidth = fromIntegral svgFontSize / 2
+
+    scale w       = fromIntegral w * (svgCanvasWidth - 2 * svgCanvasMargin) / xMax
+    boxWidth      = scale (measTime m)
+    whiskerWidth  = scale (2 * stdev)
+    boxHeight     = 22
+    whiskerMargin = 5
+
+    box = printf boxTemplate
+      (prettyEstimate est)
+      y' boxHeight boxWidth deg deg
+      deg
+      x1 x2 y2 y2
+      x1 x1 y1 y3
+      x2 x2 y1 y3
+    boxTemplate
+      =  "<g>\n<title>%s</title>\n"
+      ++ "<rect y=\"%i\" rx=\"5\" height=\"%i\" width=\"%f\" fill=\"hsl(%i, 100%%, 80%%)\" stroke=\"hsl(%i, 100%%, 55%%)\" />\n"
+      ++ "<g stroke=\"hsl(%i, 100%%, 40%%)\">"
+      ++ "<line x1=\"%f\" x2=\"%f\" y1=\"%i\" y2=\"%i\" />\n"
+      ++ "<line x1=\"%f\" x2=\"%f\" y1=\"%i\" y2=\"%i\" />\n"
+      ++ "<line x1=\"%f\" x2=\"%f\" y1=\"%i\" y2=\"%i\" />\n"
+      ++ "</g>\n</g>\n"
+
+    longText = printf longTextTemplate
+      deg
+      y (encodeSvg name)
+      y boxWidth (showPicos (measTime m))
+    longTextTemplate
+      =  "<g fill=\"hsl(%i, 100%%, 40%%)\">\n"
+      ++ "<text y=\"%i\">%s</text>\n"
+      ++ "<text y=\"%i\" x=\"%f\" text-anchor=\"end\">%s</text>\n"
+      ++ "</g>\n"
+
+    shortTextContent  = encodeSvg name ++ " " ++ showPicos (measTime m)
+    shortText         = printf shortTextTemplate deg y shortTextContent
+    shortTextTemplate = "<text fill=\"hsl(%i, 100%%, 40%%)\" y=\"%i\">%s</text>\n"
+
+encodeSvg :: String -> String
+encodeSvg = concatMap $ \x -> case x of
+  '<' -> "&lt;"
+  '&' -> "&amp;"
+  _   -> [x]
 
 newtype BaselinePath = BaselinePath { _unBaselinePath :: FilePath }
   deriving (Typeable)
