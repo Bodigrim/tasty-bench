@@ -785,7 +785,7 @@ instance IsTest Benchmarkable where
     1 -> do
       est <- measureTimeUntil (lookupOption opts) (lookupOption opts) b
       pure $ testPassed $ show (Response est (lookupOption opts) (lookupOption opts))
-    _ -> pure $ testFailed "Benchmarks should be run in a single-threaded mode (--jobs 1)"
+    _ -> pure $ testFailed "Benchmarks must not be run concurrently. Please pass --jobs 1 and/or avoid +RTS -N."
 
 -- | Attach a name to 'Benchmarkable'.
 --
