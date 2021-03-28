@@ -20,6 +20,7 @@ and between benchmarks.
 - [Isolating interfering benchmarks](#isolating-interfering-benchmarks)
 - [Comparison against baseline](#comparison-against-baseline)
 - [Comparison between benchmarks](#comparison-between-benchmarks)
+- [Plotting results](#plotting-results)
 - [Command-line options](#command-line-options)
 
 <!-- /MarkdownTOC -->
@@ -471,6 +472,15 @@ bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
 is a more robust choice of
 an [`awk` pattern](https://github.com/feuerbach/tasty#patterns) here.
 
+## Plotting results
+
+Users can dump results into CSV with `--csv FILE`
+and plot them using `gnuplot` or other software. But for convenience
+there is also a built-in quick-and-dirty SVG plotting feature,
+which can be invoked by passing `--svg FILE`. Here is a sample of its output:
+
+![Plotting](./example.svg)
+
 ## Command-line options
 
 Use `--help` to list command-line options.
@@ -510,3 +520,7 @@ Use `--help` to list command-line options.
   Upper bounds of acceptable slow down / speed up in percents. If a benchmark is unacceptably slower / faster than baseline (see `--baseline`),
   it will be reported as failed. Can be used in conjunction with
   a standard `tasty` option `--hide-successes` to show only problematic benchmarks.
+
+* `--svg`
+
+  File to plot results in SVG format.

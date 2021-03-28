@@ -423,6 +423,15 @@ Locating a baseline benchmark in larger suites could get tricky;
 is a more robust choice of
 an <https://github.com/feuerbach/tasty#patterns awk pattern> here.
 
+=== Plotting results
+
+Users can dump results into CSV with @--csv@ @FILE@ and plot them using
+@gnuplot@ or other software. But for convenience there is also a
+built-in quick-and-dirty SVG plotting feature, which can be invoked by
+passing @--svg@ @FILE@. Here is a sample of its output:
+
+![Plotting](example.svg)
+
 === Command-line options
 
 Use @--help@ to list command-line options.
@@ -467,6 +476,10 @@ Use @--help@ to list command-line options.
     @--baseline@), it will be reported as failed. Can be used in
     conjunction with a standard @tasty@ option @--hide-successes@ to
     show only problematic benchmarks.
+
+[@--svg@]:
+
+    File to plot results in SVG format.
 
 -}
 
