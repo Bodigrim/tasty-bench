@@ -1,3 +1,9 @@
+# 0.2.4
+
+* Add a simplistic SVG reporter.
+* Add `bcompare` to compare between benchmarks.
+* Throw a warning, if benchmarks take too long.
+
 # 0.2.3
 
 * Prohibit duplicated benchmark names in CSV reports.
