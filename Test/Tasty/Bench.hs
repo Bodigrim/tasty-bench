@@ -110,7 +110,7 @@ the following output:
 > All 3 tests passed (7.25s)
 
 The output says that, for instance, the first benchmark was repeatedly
-executed for 2.13 seconds (wall time), its mean time was 63 nanoseconds
+executed for 2.13 seconds (wall time), its mean CPU time was 63 nanoseconds
 and, assuming ideal precision of a system clock, execution time does not
 often diverge from the mean further than ±3.4 nanoseconds (double
 standard deviation, which for normal distributions corresponds to
@@ -128,8 +128,8 @@ Note that this data is not directly comparable with @criterion@ output:
 
 One might interpret the second line as saying that 95% of measurements
 fell into 61.99–63.41 ns interval, but this is wrong. It states that the
-<https://en.wikipedia.org/wiki/Ordinary_least_squares OLS regression> of
-execution time (which is not exactly the mean time) is most probably
+<https://en.wikipedia.org/wiki/Ordinary_least_squares OLS regression>
+(which is not exactly the mean time) of wall execution time is most probably
 somewhere between 61.99 ns and 63.41 ns, but does not say a thing about
 individual measurements. To understand how far away a typical
 measurement deviates you need to add\/subtract double standard deviation
@@ -145,6 +145,10 @@ from the penultimate line and a standard deviation:
 The interval ±1.753 ns answers for
 <https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule 68%> of
 samples only, double it to estimate the behavior in 95% of cases.
+
+When benchmarking multithreaded algorithms, note
+that @tasty-bench@ reports total elapsed CPU time across all cores, while
+@criterion@ and @gauge@ print wall-clock time.
 
 === Statistical model
 
@@ -184,7 +188,8 @@ indicative and comparative significance.
 
 === Memory usage
 
-Passing @+RTS@ @-T@ (via @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-T\'@ or
+Configuring RTS to collect GC statistics
+(e. g., via @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-T\'@ or
 @stack@ @bench@ @--ba@ @\'+RTS@ @-T\'@) enables @tasty-bench@ to estimate and
 report memory usage such as allocated and copied bytes:
 
