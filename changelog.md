@@ -1,3 +1,7 @@
+# 0.2.5
+
+* Fix comparison against baseline.
+
 # 0.2.4
 
 * Add a simplistic SVG reporter.
