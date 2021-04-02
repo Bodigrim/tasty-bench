@@ -1324,7 +1324,7 @@ consoleBenchReporter :: Ingredient
 consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe BaselinePath))] $ \opts -> do
   baseline <- case lookupOption opts of
     Nothing -> pure S.empty
-    Just (BaselinePath path) -> S.fromList . lines <$> (readFile path >>= evaluate . force)
+    Just (BaselinePath path) -> S.fromList . joinQuotedFields . lines <$> (readFile path >>= evaluate . force)
   hasGCStats <- getRTSStatsEnabled
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
   pure $ \name depR r -> case safeRead (resultDescription r) of
@@ -1340,6 +1340,17 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
         bcomp = case depR >>= safeRead . resultDescription of
           Nothing -> ""
           Just (Response depEst _ _) -> printf ", %.2fx" (estTime est / estTime depEst)
+
+-- | A well-formed CSV entry contains an even number of quotes: 0, 2 or more.
+joinQuotedFields :: [String] -> [String]
+joinQuotedFields [] = []
+joinQuotedFields (x : xs)
+  | areQuotesBalanced x = x : joinQuotedFields xs
+  | otherwise = case span areQuotesBalanced xs of
+    (_, [])      -> [] -- malformed CSV
+    (ys, z : zs) -> unlines (x : ys ++ [z]) : joinQuotedFields zs
+  where
+    areQuotesBalanced = even . length . filter (== '"')
 
 estTime :: Estimate -> Double
 estTime = fromIntegral . measTime . estMean
