@@ -1408,7 +1408,7 @@ testNameSeqs = foldTestTree trivialFold
 testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, [IM.Key])]
 testNamesAndDeps im = foldTestTree trivialFold
   { foldSingle = const $ const . (: []) . (, [])
-  , foldGroup  = const $ map . first . flip (++) . (++ ".")
+  , foldGroup  = const $ map . first . (++) . (++ ".")
   , foldAfter  = const foldDeps
   }
   where
