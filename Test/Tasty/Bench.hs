@@ -778,13 +778,13 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
           isTimeoutSoon = case timeout of
             NoTimeout -> False
             -- multiplying by 12/10 helps to avoid accidental timeouts
-            Timeout micros _ -> (sumOfTs + measTime t1 + 3 * measTime t2) `quot` (1000000 * 10 `quot` 12) >= fromInteger micros
+            Timeout micros _ -> (sumOfTs' + 3 * measTime t2) `quot` (1000000 * 10 `quot` 12) >= fromInteger micros
           isStDevInTargetRange = stdevN < truncate (max 0 targetRelStDev * fromIntegral meanN)
           scale = (`quot` fromIntegral n)
           sumOfTs' = sumOfTs + measTime t1
 
       case timeout of
-        NoTimeout | sumOfTs' > 100 * 1000000000000
+        NoTimeout | sumOfTs' + measTime t2 > 100 * 1000000000000
           -> hPutStrLn stderr "This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning)."
         _ -> pure ()
 
