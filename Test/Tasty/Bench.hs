@@ -18,7 +18,9 @@ if you already depend on @tasty@ for a test suite, there is nothing else
 to install.
 
 Compare this to @criterion@ (10+ modules, 50+ dependencies) and @gauge@
-(40+ modules, depends on @basement@ and @vector@).
+(40+ modules, depends on @basement@ and @vector@). A build on a clean machine is up to 16x
+faster than @criterion@ and up to 4x faster than @gauge@. A build without dependencies
+is up to 6x faster than @criterion@ and up to 8x faster than @gauge@.
 
 === How is it possible?
 
