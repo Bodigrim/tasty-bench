@@ -504,7 +504,9 @@ module Test.Tasty.Bench
   , Benchmark
   , bench
   , bgroup
+#if MIN_VERSION_tasty(1,2,0)
   , bcompare
+#endif
   , env
   , envWithCleanup
   -- * Creating 'Benchmarkable'
@@ -559,8 +561,10 @@ import qualified Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import Test.Tasty.Options
+#if MIN_VERSION_tasty(1,2,0)
 import Test.Tasty.Patterns.Eval (eval, asB, withFields)
 import Test.Tasty.Patterns.Types (Expr (And, StringLit))
+#endif
 import Test.Tasty.Providers
 import Test.Tasty.Runners
 import Text.Printf
@@ -826,6 +830,7 @@ bench = singleTest
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup = testGroup
 
+#if MIN_VERSION_tasty(1,2,0)
 -- | Compare benchmarks, reporting relative speed up or slow down.
 --
 -- The first argument is a @tasty@ pattern, which must unambiguously
@@ -839,12 +844,13 @@ bgroup = testGroup
 --
 -- This function is a vague reminiscence of @bcompare@, which existed in pre-1.0
 -- versions of @criterion@, but their types are incompatible. Under the hood
--- 'bcompare' is a thin wrapper over 'after'.
+-- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
 --
 bcompare :: String -> Benchmark -> Benchmark
 bcompare s = case parseExpr s of
   Nothing -> error $ "Could not parse bcompare pattern " ++ s
   Just e  -> after_ AllSucceed (And (StringLit "tasty-bench") e)
+#endif
 
 -- | Benchmarks are actually just a regular 'Test.Tasty.TestTree' in disguise.
 --
@@ -1161,7 +1167,7 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
         )
         hClose
         (`csvOutput` augmented)
-      pure $ const ((== 0) . statFailures <$> computeStatistics smap)
+      pure $ const $ isSuccessful smap
 
 lookupRepeatingElements :: Ord a => [a] -> Maybe a
 lookupRepeatingElements = go S.empty
@@ -1211,7 +1217,15 @@ svgReporter = TestReporter [Option (Proxy :: Proxy (Maybe SvgPath))] $
       svgCollect ref (IM.intersectionWith (,) namesMap smap)
       res <- readIORef ref
       writeFile path (svgRender (reverse res))
-      pure $ const ((== 0) . statFailures <$> computeStatistics smap)
+      pure $ const $ isSuccessful smap
+
+isSuccessful :: StatusMap -> IO Bool
+isSuccessful = go . IM.elems
+  where
+    go [] = pure True
+    go (tv : tvs) = do
+      b <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure (resultSuccessful r); _ -> retry
+      if b then go tvs else pure False
 
 svgCollect :: IORef [(TestName, Estimate)] -> IntMap (TestName, TVar Status) -> IO ()
 svgCollect ref = traverse_ $ \(name, tv) -> do
@@ -1430,9 +1444,12 @@ testNamesAndDeps im = foldTestTree trivialFold
   , foldAfter  = const foldDeps
 #else
   , foldGroup  = map . first . (++) . (++ ".")
+#if MIN_VERSION_tasty(1,2,0)
   , foldAfter  = foldDeps
 #endif
+#endif
   }
+#if MIN_VERSION_tasty(1,2,0)
   where
     foldDeps AllSucceed (And (StringLit "tasty-bench") p) =
       map $ second $ (++) $ findMatchingKeys im p
@@ -1443,6 +1460,7 @@ findMatchingKeys im pattern =
   foldr (\(k, v) -> if withFields v pat == Right True then (k :) else id) [] $ IM.assocs im
   where
     pat = eval pattern >>= asB
+#endif
 
 postprocessResult
     :: (TestName -> Maybe Result -> Result -> Result)
