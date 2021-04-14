@@ -1415,14 +1415,23 @@ modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
 testNameSeqs :: OptionSet -> TestTree -> [Seq TestName]
 testNameSeqs = foldTestTree trivialFold
   { foldSingle = const $ const . (:[]) . Seq.singleton
+#if MIN_VERSION_tasty(1,4,0)
   , foldGroup  = const $ map . (<|)
+#else
+  , foldGroup  = map . (<|)
+#endif
   }
 
 testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, [IM.Key])]
 testNamesAndDeps im = foldTestTree trivialFold
   { foldSingle = const $ const . (: []) . (, [])
+#if MIN_VERSION_tasty(1,4,0)
   , foldGroup  = const $ map . first . (++) . (++ ".")
   , foldAfter  = const foldDeps
+#else
+  , foldGroup  = map . first . (++) . (++ ".")
+  , foldAfter  = foldDeps
+#endif
   }
   where
     foldDeps AllSucceed (And (StringLit "tasty-bench") p) =
