@@ -1421,7 +1421,9 @@ modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
                    . IM.intersectionWith (\(a, b) c -> (a, b, c)) namesAndDeps
   in (modifySMap >=>) <$> cb opts tree
   where
-    TestReporter desc cb = consoleTestReporter
+    (desc, cb) = case consoleTestReporter of
+      TestReporter d c -> (d, c)
+      _ -> error "modifyConsoleReporter: consoleTestReporter must be TestReporter"
 
     isSingle [a] = Just a
     isSingle _ = Nothing
