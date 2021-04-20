@@ -511,7 +511,9 @@ Use `--help` to list command-line options.
 
   Target relative standard deviation of measurements in percents (5% by default).
   Large values correspond to fast and loose benchmarks, and small ones to long and precise.
-  If it takes far too long, consider setting `--timeout`,
+  It can also be adjusted locally for a group of benchmarks,
+  e. g., `localOption (RelStDev 0.02)`.
+  If benchmarking takes far too long, consider setting `--timeout`,
   which will interrupt benchmarks, potentially before reaching the target deviation.
 
 * `--csv`
@@ -527,6 +529,8 @@ Use `--help` to list command-line options.
   Upper bounds of acceptable slow down / speed up in percents. If a benchmark is unacceptably slower / faster than baseline (see `--baseline`),
   it will be reported as failed. Can be used in conjunction with
   a standard `tasty` option `--hide-successes` to show only problematic benchmarks.
+  Both options can be adjusted locally for a group of benchmarks,
+  e. g., `localOption (FailIfSlower 0.10)`.
 
 * `--svg`
 
