@@ -1242,7 +1242,7 @@ svgRender pairs = header ++ concat (zipWith
   pairs) ++ footer
   where
     dropAllPrefix
-      | all ("All." `isPrefixOf`) (map fst pairs) = drop 4
+      | all (("All." `isPrefixOf`) . fst) pairs = drop 4
       | otherwise = id
 
     l = genericLength pairs
