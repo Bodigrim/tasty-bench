@@ -522,6 +522,7 @@ module Test.Tasty.Bench
   , whnfIO
   , nfAppIO
   , whnfAppIO
+  , measureTime
   -- * Ingredients
   , benchIngredients
   , consoleBenchReporter
@@ -770,8 +771,8 @@ getAllocsAndCopied = do
     pure (0, 0)
 #endif
 
-measureTime :: Int64 -> Benchmarkable -> IO Measurement
-measureTime n (Benchmarkable act) = do
+measure :: Int64 -> Benchmarkable -> IO Measurement
+measure n (Benchmarkable act) = do
   performGC
   startTime <- fromInteger <$> getCPUTime
   (startAllocs, startCopied) <- getAllocsAndCopied
@@ -784,18 +785,23 @@ measureTime n (Benchmarkable act) = do
     , measCopied = endCopied - startCopied
     }
 
-measureTimeUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
-measureTimeUntil _ (RelStDev targetRelStDev) b
+-- | Low-level routine to measure execution time in seconds
+-- of a given number of consecutive benchmark runs.
+measureTime :: Int64 -> Benchmarkable -> IO Double
+measureTime = (fmap ((/ 1e12) . fromIntegral . measTime) .) . measure
+
+measureUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
+measureUntil _ (RelStDev targetRelStDev) b
   | isInfinite targetRelStDev, targetRelStDev > 0 = do
-  t1 <- measureTime 1 b
+  t1 <- measure 1 b
   pure $ Estimate { estMean = t1, estStdev = 0 }
-measureTimeUntil timeout (RelStDev targetRelStDev) b = do
-  t1 <- measureTime 1 b
+measureUntil timeout (RelStDev targetRelStDev) b = do
+  t1 <- measure 1 b
   go 1 t1 0
   where
     go :: Int64 -> Measurement -> Word64 -> IO Estimate
     go n t1 sumOfTs = do
-      t2 <- measureTime (2 * n) b
+      t2 <- measure (2 * n) b
 
       let Estimate (Measurement meanN allocN copiedN) stdevN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
@@ -828,7 +834,7 @@ instance IsTest Benchmarkable where
     ]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
-      est <- measureTimeUntil (lookupOption opts) (lookupOption opts) b
+      est <- measureUntil (lookupOption opts) (lookupOption opts) b
       pure $ testPassed $ show (Response est (lookupOption opts) (lookupOption opts))
     _ -> pure $ testFailed "Benchmarks must not be run concurrently. Please pass --jobs 1 and/or avoid +RTS -N."
 
