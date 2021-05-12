@@ -653,7 +653,7 @@ parsePositivePercents xs = do
 --
 -- Drop-in replacement for 'Criterion.Benchmarkable' and 'Gauge.Benchmarkable'.
 --
-newtype Benchmarkable = Benchmarkable { _unBenchmarkable :: Int64 -> IO () }
+newtype Benchmarkable = Benchmarkable { _unBenchmarkable :: Word64 -> IO () }
   deriving (Typeable)
 
 showPicos :: Word64 -> String
@@ -771,7 +771,7 @@ getAllocsAndCopied = do
     pure (0, 0)
 #endif
 
-measure :: Int64 -> Benchmarkable -> IO Measurement
+measure :: Word64 -> Benchmarkable -> IO Measurement
 measure n (Benchmarkable act) = do
   performGC
   startTime <- fromInteger <$> getCPUTime
@@ -787,7 +787,7 @@ measure n (Benchmarkable act) = do
 
 -- | Low-level routine to measure execution time in seconds
 -- of a given number of consecutive benchmark runs.
-measureTime :: Int64 -> Benchmarkable -> IO Double
+measureTime :: Word64 -> Benchmarkable -> IO Double
 measureTime = (fmap ((/ 1e12) . fromIntegral . measTime) .) . measure
 
 measureUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
@@ -799,7 +799,7 @@ measureUntil timeout (RelStDev targetRelStDev) b = do
   t1 <- measure 1 b
   go 1 t1 0
   where
-    go :: Int64 -> Measurement -> Word64 -> IO Estimate
+    go :: Word64 -> Measurement -> Word64 -> IO Estimate
     go n t1 sumOfTs = do
       t2 <- measure (2 * n) b
 
@@ -899,7 +899,7 @@ funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
   where
     go f x n
-      | n <= 0    = pure ()
+      | n == 0    = pure ()
       | otherwise = do
         _ <- evaluate (frc (f x))
         go f x (n - 1)
@@ -977,7 +977,7 @@ ioToBench :: (b -> c) -> IO b -> Benchmarkable
 ioToBench frc act = Benchmarkable go
   where
     go n
-      | n <= 0    = pure ()
+      | n == 0    = pure ()
       | otherwise = do
         val <- act
         _ <- evaluate (frc val)
@@ -1034,7 +1034,7 @@ ioFuncToBench :: (b -> c) -> (a -> IO b) -> a -> Benchmarkable
 ioFuncToBench frc = (Benchmarkable .) . go
   where
     go f x n
-      | n <= 0    = pure ()
+      | n == 0    = pure ()
       | otherwise = do
         val <- f x
         _ <- evaluate (frc val)
