@@ -584,7 +584,13 @@ import System.IO.Unsafe
 --
 -- E. g., set target relative standard deviation to 2% as follows:
 --
+-- > import Test.Tasty (localOption)
 -- > localOption (RelStDev 0.02) (bgroup [...])
+--
+-- If you set 'RelStDev' to infinity, a benchmark will be executed
+-- only once and its standard deviation will be recorded as zero.
+-- This is rather a blunt approach, but it might be a necessary evil
+-- for extremely long benchmarks.
 --
 newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)
@@ -603,6 +609,7 @@ instance IsOption RelStDev where
 --
 -- E. g., set upper bound of acceptable slow down to 10% as follows:
 --
+-- > import Test.Tasty (localOption)
 -- > localOption (FailIfSlower 0.10) (bgroup [...])
 --
 newtype FailIfSlower = FailIfSlower Double
@@ -622,6 +629,7 @@ instance IsOption FailIfSlower where
 --
 -- E. g., set upper bound of acceptable speed up to 10% as follows:
 --
+-- > import Test.Tasty (localOption)
 -- > localOption (FailIfFaster 0.10) (bgroup [...])
 --
 newtype FailIfFaster = FailIfFaster Double
@@ -777,6 +785,10 @@ measureTime n (Benchmarkable act) = do
     }
 
 measureTimeUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
+measureTimeUntil _ (RelStDev targetRelStDev) b
+  | isInfinite targetRelStDev, targetRelStDev > 0 = do
+  t1 <- measureTime 1 b
+  pure $ Estimate { estMean = t1, estStdev = 0 }
 measureTimeUntil timeout (RelStDev targetRelStDev) b = do
   t1 <- measureTime 1 b
   go 1 t1 0
@@ -801,7 +813,9 @@ measureTimeUntil timeout (RelStDev targetRelStDev) b = do
 
 
       if isStDevInTargetRange || isTimeoutSoon
-        then pure $ Estimate (Measurement (scale meanN) (scale allocN) (scale copiedN)) (scale stdevN)
+        then pure $ Estimate
+          { estMean  = Measurement (scale meanN) (scale allocN) (scale copiedN)
+          , estStdev = scale stdevN }
         else go (2 * n) t2 sumOfTs'
 
 instance IsTest Benchmarkable where
