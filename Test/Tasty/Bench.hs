@@ -522,7 +522,7 @@ module Test.Tasty.Bench
   , whnfIO
   , nfAppIO
   , whnfAppIO
-  , measureTime
+  , measureCpuTime
   -- * Ingredients
   , benchIngredients
   , consoleBenchReporter
@@ -787,8 +787,8 @@ measure n (Benchmarkable act) = do
 
 -- | Low-level routine to measure execution time in seconds
 -- of a given number of consecutive benchmark runs.
-measureTime :: Word64 -> Benchmarkable -> IO Double
-measureTime = (fmap ((/ 1e12) . fromIntegral . measTime) .) . measure
+measureCpuTime :: Word64 -> Benchmarkable -> IO Double
+measureCpuTime = (fmap ((/ 1e12) . fromIntegral . measTime) .) . measure
 
 measureUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
 measureUntil _ (RelStDev targetRelStDev) b
