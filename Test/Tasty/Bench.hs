@@ -727,12 +727,14 @@ data Response = Response
 
 prettyEstimate :: Estimate -> String
 prettyEstimate (Estimate m stdev) =
-  showPicos4 (measTime m) ++ " ± " ++ showPicos3 (2 * stdev)
+  showPicos4 (measTime m)
+  ++ (if stdev == 0 then "         " else " ± " ++ showPicos3 (2 * stdev))
 
 prettyEstimateWithGC :: Estimate -> String
 prettyEstimateWithGC (Estimate m stdev) =
-  showPicos4 (measTime m) ++ " ± " ++ showPicos3 (2 * stdev)
-  ++ ", " ++ showBytes (measAllocs m) ++ " allocated, "
+  showPicos4 (measTime m)
+  ++ (if stdev == 0 then ",          " else " ± " ++ showPicos3 (2 * stdev) ++ ", ")
+  ++ showBytes (measAllocs m) ++ " allocated, "
   ++ showBytes (measCopied m) ++ " copied"
 
 csvEstimate :: Estimate -> String
