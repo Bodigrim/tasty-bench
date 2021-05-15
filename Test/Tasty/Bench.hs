@@ -656,8 +656,9 @@ parsePositivePercents xs = do
 newtype Benchmarkable = Benchmarkable { _unBenchmarkable :: Word64 -> IO () }
   deriving (Typeable)
 
-showPicos :: Word64 -> String
-showPicos i
+-- | Show picoseconds, fitting number in 3 characters.
+showPicos3 :: Word64 -> String
+showPicos3 i
   | t < 995   = printf "%3.0f ps" t
   | t < 995e1 = printf "%3.1f ns" (t / 1e3)
   | t < 995e3 = printf "%3.0f ns" (t / 1e3)
@@ -666,6 +667,24 @@ showPicos i
   | t < 995e7 = printf "%3.1f ms" (t / 1e9)
   | t < 995e9 = printf "%3.0f ms" (t / 1e9)
   | otherwise = printf "%4.2f s"  (t / 1e12)
+  where
+    t :: Double
+    t = fromIntegral i
+
+-- | Show picoseconds, fitting number in 4 characters.
+showPicos4 :: Word64 -> String
+showPicos4 i
+  | t < 995   = printf "%3.0f  ps"  t
+  | t < 995e1 = printf "%4.2f ns"  (t / 1e3)
+  | t < 995e2 = printf "%4.1f ns"  (t / 1e3)
+  | t < 995e3 = printf "%3.0f  ns" (t / 1e3)
+  | t < 995e4 = printf "%4.2f μs"  (t / 1e6)
+  | t < 995e5 = printf "%4.1f μs"  (t / 1e6)
+  | t < 995e6 = printf "%3.0f  μs" (t / 1e6)
+  | t < 995e7 = printf "%4.2f ms"  (t / 1e9)
+  | t < 995e8 = printf "%4.1f ms"  (t / 1e9)
+  | t < 995e9 = printf "%3.0f  ms" (t / 1e9)
+  | otherwise = printf "%4.2f s"   (t / 1e12)
   where
     t :: Double
     t = fromIntegral i
@@ -708,11 +727,11 @@ data Response = Response
 
 prettyEstimate :: Estimate -> String
 prettyEstimate (Estimate m stdev) =
-  showPicos (measTime m) ++ " ± " ++ showPicos (2 * stdev)
+  showPicos4 (measTime m) ++ " ± " ++ showPicos3 (2 * stdev)
 
 prettyEstimateWithGC :: Estimate -> String
 prettyEstimateWithGC (Estimate m stdev) =
-  showPicos (measTime m) ++ " ± " ++ showPicos (2 * stdev)
+  showPicos4 (measTime m) ++ " ± " ++ showPicos3 (2 * stdev)
   ++ ", " ++ showBytes (measAllocs m) ++ " allocated, "
   ++ showBytes (measCopied m) ++ " copied"
 
@@ -1327,14 +1346,14 @@ svgRenderItem i iMax xMax name est@(Estimate m stdev) =
     longText = printf longTextTemplate
       deg
       y (encodeSvg name)
-      y boxWidth (showPicos (measTime m))
+      y boxWidth (showPicos4 (measTime m))
     longTextTemplate
       =  "<g fill=\"hsl(%i, 100%%, 40%%)\">\n"
       ++ "<text y=\"%i\">%s</text>\n"
       ++ "<text y=\"%i\" x=\"%f\" text-anchor=\"end\">%s</text>\n"
       ++ "</g>\n"
 
-    shortTextContent  = encodeSvg name ++ " " ++ showPicos (measTime m)
+    shortTextContent  = encodeSvg name ++ " " ++ showPicos4 (measTime m)
     shortText         = printf shortTextTemplate deg y shortTextContent
     shortTextTemplate = "<text fill=\"hsl(%i, 100%%, 40%%)\" y=\"%i\">%s</text>\n"
 
