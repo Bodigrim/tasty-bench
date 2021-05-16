@@ -273,7 +273,7 @@ another way to speed up generation of Fibonacci numbers.
     @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into @cabal@
     file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
 
-    For GHC >= 8.10 consider switching benchmarks to a non-moving garbage collector,
+    For GHC ≥ 8.10 consider switching benchmarks to a non-moving garbage collector,
     because it decreases GC pauses and corresponding noise: @+RTS@ @--nonmoving-gc@.
 
 -   If benchmark results look malformed like below, make sure that you
@@ -346,12 +346,12 @@ Assuming that a benchmark is declared in @cabal@ file as
 @benchmark@ @my-bench@ component, let’s first find its executable:
 
 > cabal build --enable-benchmarks my-bench
-> MYBENCH=`cabal list-bin my-bench`
+> MYBENCH=$(cabal list-bin my-bench)
 
 Now list all benchmark names (hopefully, they do not contain newlines),
 escape quotes and slashes, and run each of them separately:
 
-> $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'"$name"'"'; done
+> $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read -r name; do $MYBENCH -p '$0 == "'"$name"'"'; done
 
 === Comparison against baseline
 
@@ -590,10 +590,12 @@ import System.IO.Unsafe
 -- > import Test.Tasty (localOption)
 -- > localOption (RelStDev 0.02) (bgroup [...])
 --
--- If you set 'RelStDev' to infinity, a benchmark will be executed
+-- If you set 'RelStDev' to infinity,
+-- a benchmark will be executed
 -- only once and its standard deviation will be recorded as zero.
 -- This is rather a blunt approach, but it might be a necessary evil
--- for extremely long benchmarks.
+-- for extremely long benchmarks. If you wish to run all benchmarks
+-- only once, use command-line option @--stdev@ @Infinity@.
 --
 newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)

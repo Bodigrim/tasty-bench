@@ -305,7 +305,7 @@ look for another way to speed up generation of Fibonacci numbers.
   Alternatively bake it into
   `cabal` file as `ghc-options: "-with-rtsopts=-A32m"`.
 
-  For GHC >= 8.10 consider switching benchmarks to a non-moving garbage collector,
+  For GHC ≥ 8.10 consider switching benchmarks to a non-moving garbage collector,
   because it decreases GC pauses and corresponding noise: `+RTS --nonmoving-gc`.
 
 * If benchmark results look malformed like below, make sure that you are
@@ -385,14 +385,14 @@ let's first find its executable:
 
 ```bash
 cabal build --enable-benchmarks my-bench
-MYBENCH=`cabal list-bin my-bench`
+MYBENCH=$(cabal list-bin my-bench)
 ```
 
 Now list all benchmark names (hopefully, they do not contain newlines),
 escape quotes and slashes, and run each of them separately:
 
 ```bash
-$MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'"$name"'"'; done
+$MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read -r name; do $MYBENCH -p '$0 == "'"$name"'"'; done
 ```
 
 ## Comparison against baseline
