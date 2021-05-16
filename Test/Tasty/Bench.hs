@@ -517,7 +517,7 @@ module Test.Tasty.Bench
   , env
   , envWithCleanup
   -- * Creating 'Benchmarkable'
-  , Benchmarkable
+  , Benchmarkable(..)
   , nf
   , whnf
   , nfIO
@@ -657,8 +657,9 @@ parsePositivePercents xs = do
 --
 -- Drop-in replacement for 'Criterion.Benchmarkable' and 'Gauge.Benchmarkable'.
 --
-newtype Benchmarkable = Benchmarkable { _unBenchmarkable :: Word64 -> IO () }
-  deriving (Typeable)
+newtype Benchmarkable = Benchmarkable
+  { unBenchmarkable :: Word64 -> IO () -- ^ Run benchmark given number of times.
+  } deriving (Typeable)
 
 -- | Show picoseconds, fitting number in 3 characters.
 showPicos3 :: Word64 -> String
@@ -810,11 +811,6 @@ measure n (Benchmarkable act) = do
     , measCopied = endCopied - startCopied
     }
 
--- | Low-level routine to measure execution time in seconds
--- of a given number of consecutive benchmark runs.
-measureCpuTime :: Word64 -> Benchmarkable -> IO Double
-measureCpuTime = (fmap ((/ 1e12) . fromIntegral . measTime) .) . measure
-
 measureUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
 measureUntil _ (RelStDev targetRelStDev) b
   | isInfinite targetRelStDev, targetRelStDev > 0 = do
@@ -842,12 +838,17 @@ measureUntil timeout (RelStDev targetRelStDev) b = do
           -> hPutStrLn stderr "This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning)."
         _ -> pure ()
 
-
       if isStDevInTargetRange || isTimeoutSoon
         then pure $ Estimate
           { estMean  = Measurement (scale meanN) (scale allocN) (scale copiedN)
           , estStdev = scale stdevN }
         else go (2 * n) t2 sumOfTs'
+
+-- | An internal routine to measure execution time in seconds
+-- for a given timeout (put 'NoTimeout', or 'mkTimeout' 100000000 for 100 seconds)
+-- and a target relative standard deviation (put 'RelStDev' 0.05 for 5%).
+measureCpuTime :: Timeout -> RelStDev -> Benchmarkable -> IO Double
+measureCpuTime = ((fmap ((/ 1e12) . fromIntegral . measTime . estMean) .) .) . measureUntil
 
 instance IsTest Benchmarkable where
   testOptions = pure
