@@ -183,8 +183,10 @@ Here is a procedure used by `tasty-bench` to measure execution time:
 1. Set _n_ ← 1.
 2. Measure execution time _tₙ_ of _n_ iterations
    and execution time _t₂ₙ_ of _2n_ iterations.
-3. Find _t_ which minimizes deviation of (_nt_, _2nt_) from (_tₙ_, _t₂ₙ_).
-4. If deviation is small enough (see `--stdev` below),
+3. Find _t_ which minimizes deviation of (_nt_, _2nt_) from (_tₙ_, _t₂ₙ_),
+   namely _t_ ← (_tₙ_ + _2t₂ₙ_) / _5n_.
+4. If deviation is small enough (see `--stdev` below)
+   or time is running out soon (see `--timeout` below),
    return _t_ as a mean execution time.
 5. Otherwise set _n_ ← _2n_ and jump back to Step 2.
 
@@ -390,7 +392,7 @@ Now list all benchmark names (hopefully, they do not contain newlines),
 escape quotes and slashes, and run each of them separately:
 
 ```bash
-$MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'$name'"'; done
+$MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'"$name"'"'; done
 ```
 
 ## Comparison against baseline
@@ -505,7 +507,8 @@ Use `--help` to list command-line options.
   in seconds. Use it when benchmarks tend to take too long: `tasty-bench` will make
   an effort to report results (even if of subpar quality) before timeout. Setting
   timeout too tight (insufficient for at least three iterations)
-  will result in a benchmark failure.
+  will result in a benchmark failure. One can adjust it locally for a group
+  of benchmarks, e. g., `localOption (mkTimeout 100000000)` for 100 seconds.
 
 * `--stdev`
 

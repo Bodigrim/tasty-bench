@@ -160,9 +160,10 @@ Here is a procedure used by @tasty-bench@ to measure execution time:
 2.  Measure execution time \( t_n \) of \( n \) iterations and execution time
     \( t_{2n} \) of \( 2n \) iterations.
 3.  Find \( t \) which minimizes deviation of \( (nt, 2nt) \) from
-    \( (t_n, t_{2n}) \).
-4.  If deviation is small enough (see @--stdev@ below), return \( t \) as a
-    mean execution time.
+    \( (t_n, t_{2n}) \), namely \( t \leftarrow (t_n + 2t_{2n}) / 5n \).
+4.  If deviation is small enough (see @--stdev@ below)
+    or time is running out soon (see @--timeout@ below),
+    return \( t \) as a mean execution time.
 5.  Otherwise set \( n \leftarrow 2n \) and jump back to Step 2.
 
 This is roughly similar to the linear regression approach which
@@ -350,7 +351,7 @@ Assuming that a benchmark is declared in @cabal@ file as
 Now list all benchmark names (hopefully, they do not contain newlines),
 escape quotes and slashes, and run each of them separately:
 
-> $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'$name'"'; done
+> $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read name; do $MYBENCH -p '$0 == "'"$name"'"'; done
 
 === Comparison against baseline
 
@@ -457,7 +458,8 @@ Use @--help@ to list command-line options.
     @tasty-bench@ will make an effort to report results (even if of
     subpar quality) before timeout. Setting timeout too tight
     (insufficient for at least three iterations) will result in a
-    benchmark failure.
+    benchmark failure. One can adjust it locally for a group
+    of benchmarks, e. g., 'localOption' ('mkTimeout' 100000000) for 100 seconds.
 
 [@--stdev@]:
 
