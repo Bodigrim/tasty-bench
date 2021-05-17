@@ -409,10 +409,6 @@ All.fibonacci numbers.tenth,637152,46744
 All.fibonacci numbers.twentieth,81369531,3342646
 ```
 
-Note that columns do not match CSV reports of `criterion` and `gauge`.
-If desired, missing columns can be faked with
-`awk 'BEGIN {FS=",";OFS=","}; {print $1,$2,$2,$2,$3/2,$3/2,$3/2}'` or similar.
-
 Now modify implementation and rerun benchmarks
 with `--baseline FILE` key. This produces a report as follows:
 
@@ -437,6 +433,23 @@ deviation is less than 6%). Consider also using `--hide-successes` to show
 only problematic benchmarks, or even
 [`tasty-rerun`](http://hackage.haskell.org/package/tasty-rerun) package
 to focus on rerunning failing items only.
+
+Note that columns in CSV report are different from what `criterion` or `gauge`
+would produce. If names do not contain commas, missing columns can be faked this way:
+
+```sh
+cat tasty-bench.csv \
+| awk 'BEGIN {FS=",";OFS=","}; {print $1,$2/1e12,$2/1e12,$2/1e12,$3/2e12,$3/2e12,$3/2e12}' \
+| sed '1s/.*/Name,Mean,MeanLB,MeanUB,Stddev,StddevLB,StddevUB/'
+```
+
+To fake `gauge` in `--csvraw` mode use
+
+```sh
+cat tasty-bench.csv \
+| awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' \
+| sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
+```
 
 ## Comparison between benchmarks
 
