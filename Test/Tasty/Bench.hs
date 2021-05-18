@@ -499,6 +499,36 @@ Use @--help@ to list command-line options.
 
     File to plot results in SVG format.
 
+=== Custom command-line options
+
+As usual with @tasty@, it is easy to extend benchmarks with custom command-line options.
+Here is an example:
+
+> import Data.Proxy
+> import Test.Tasty.Bench
+> import Test.Tasty.Ingredients.Basic
+> import Test.Tasty.Options
+> import Test.Tasty.Runners
+>
+> newtype RandomSeed = RandomSeed Int
+>
+> instance IsOption RandomSeed where
+>   defaultValue = RandomSeed 42
+>   parseValue = fmap RandomSeed . safeRead
+>   optionName = pure "seed"
+>   optionHelp = pure "Random seed used in benchmarks"
+>
+> main :: IO ()
+> main = do
+>   let customOpts  = [Option (Proxy :: Proxy RandomSeed)]
+>       ingredients = includingOptions customOpts : benchIngredients
+>   opts <- parseOptions ingredients benchmarks
+>   let RandomSeed seed = lookupOption opts
+>   defaultMainWithIngredients ingredients benchmarks
+>
+> benchmarks :: Benchmark
+> benchmarks = bgroup "All" []
+
 -}
 
 {-# LANGUAGE CPP #-}
@@ -815,12 +845,12 @@ measure n (Benchmarkable act) = do
     , measCopied = endCopied - startCopied
     }
 
-measureUntil :: Timeout -> RelStDev -> Benchmarkable -> IO Estimate
-measureUntil _ (RelStDev targetRelStDev) b
+measureUntil :: Bool -> Timeout -> RelStDev -> Benchmarkable -> IO Estimate
+measureUntil _ _ (RelStDev targetRelStDev) b
   | isInfinite targetRelStDev, targetRelStDev > 0 = do
   t1 <- measure 1 b
   pure $ Estimate { estMean = t1, estStdev = 0 }
-measureUntil timeout (RelStDev targetRelStDev) b = do
+measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
   t1 <- measure 1 b
   go 1 t1 0
   where
@@ -838,7 +868,7 @@ measureUntil timeout (RelStDev targetRelStDev) b = do
           sumOfTs' = sumOfTs + measTime t1
 
       case timeout of
-        NoTimeout | sumOfTs' + measTime t2 > 100 * 1000000000000
+        NoTimeout | warnIfNoTimeout, sumOfTs' + measTime t2 > 100 * 1000000000000
           -> hPutStrLn stderr "This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning)."
         _ -> pure ()
 
@@ -850,9 +880,17 @@ measureUntil timeout (RelStDev targetRelStDev) b = do
 
 -- | An internal routine to measure execution time in seconds
 -- for a given timeout (put 'NoTimeout', or 'mkTimeout' 100000000 for 100 seconds)
--- and a target relative standard deviation (put 'RelStDev' 0.05 for 5%).
+-- and a target relative standard deviation
+-- (put 'RelStDev' 0.05 for 5% or 'RelStDev' (1/0) to run only one iteration).
+--
+-- 'Timeout' takes soft priority over 'RelStDev': this function prefers
+-- to finish in time even if at cost of precision. However, timeout is guidance
+-- not guarantee: 'measureCpuTime' can take longer, if there is not enough time
+-- to run at least thrice or an iteration takes unusually long.
 measureCpuTime :: Timeout -> RelStDev -> Benchmarkable -> IO Double
-measureCpuTime = ((fmap ((/ 1e12) . fromIntegral . measTime . estMean) .) .) . measureUntil
+measureCpuTime
+    = ((fmap ((/ 1e12) . fromIntegral . measTime . estMean) .) .)
+    . measureUntil False
 
 instance IsTest Benchmarkable where
   testOptions = pure
@@ -864,7 +902,7 @@ instance IsTest Benchmarkable where
     ]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
-      est <- measureUntil (lookupOption opts) (lookupOption opts) b
+      est <- measureUntil True (lookupOption opts) (lookupOption opts) b
       pure $ testPassed $ show (Response est (lookupOption opts) (lookupOption opts))
     _ -> pure $ testFailed "Benchmarks must not be run concurrently. Please pass --jobs 1 and/or avoid +RTS -N."
 

@@ -22,6 +22,7 @@ and between benchmarks.
 - [Comparison between benchmarks](#comparison-between-benchmarks)
 - [Plotting results](#plotting-results)
 - [Command-line options](#command-line-options)
+- [Custom command-line options](#custom-command-line-options)
 
 <!-- /MarkdownTOC -->
 
@@ -551,3 +552,35 @@ Use `--help` to list command-line options.
 * `--svg`
 
   File to plot results in SVG format.
+
+## Custom command-line options
+
+As usual with `tasty`, it is easy to extend benchmarks with custom command-line options.
+Here is an example:
+
+```haskell
+import Data.Proxy
+import Test.Tasty.Bench
+import Test.Tasty.Ingredients.Basic
+import Test.Tasty.Options
+import Test.Tasty.Runners
+
+newtype RandomSeed = RandomSeed Int
+
+instance IsOption RandomSeed where
+  defaultValue = RandomSeed 42
+  parseValue = fmap RandomSeed . safeRead
+  optionName = pure "seed"
+  optionHelp = pure "Random seed used in benchmarks"
+
+main :: IO ()
+main = do
+  let customOpts  = [Option (Proxy :: Proxy RandomSeed)]
+      ingredients = includingOptions customOpts : benchIngredients
+  opts <- parseOptions ingredients benchmarks
+  let RandomSeed seed = lookupOption opts
+  defaultMainWithIngredients ingredients benchmarks
+
+benchmarks :: Benchmark
+benchmarks = bgroup "All" []
+```
