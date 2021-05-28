@@ -1,3 +1,10 @@
+# 0.2.6
+
+* Report mean time with 3 significant digits.
+* Run benchmarks only once, if `RelStDev` is infinite.
+* Make `Benchmarkable` constructor public.
+* Expose `measureCpuTime` helper to run benchmarks manually.
+
 # 0.2.5
 
 * Fix comparison against baseline.
