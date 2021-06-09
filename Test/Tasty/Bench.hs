@@ -821,19 +821,18 @@ predictPerturbed t1 t2 = Estimate
     hi meas = meas { measTime = measTime meas + prec }
     lo meas = meas { measTime = measTime meas - prec }
 
-#if !MIN_VERSION_base(4,10,0)
-getRTSStatsEnabled :: IO Bool
-#if MIN_VERSION_base(4,6,0)
-getRTSStatsEnabled = getGCStatsEnabled
+hasGCStats :: Bool
+#if MIN_VERSION_base(4,10,0)
+hasGCStats = unsafePerformIO getRTSStatsEnabled
+#elif MIN_VERSION_base(4,6,0)
+hasGCStats = unsafePerformIO getGCStatsEnabled
 #else
-getRTSStatsEnabled = pure False
-#endif
+hasGCStats = False
 #endif
 
 getAllocsAndCopied :: IO (Word64, Word64, Word64)
 getAllocsAndCopied = do
-  enabled <- getRTSStatsEnabled
-  if not enabled then pure (0, 0, 0) else
+  if not hasGCStats then pure (0, 0, 0) else
 #if MIN_VERSION_base(4,10,0)
     (\s -> (allocated_bytes s, copied_bytes s, max_mem_in_use_bytes s)) <$> getRTSStats
 #elif MIN_VERSION_base(4,6,0)
@@ -1263,7 +1262,6 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
           hPutStrLn stderr $ "CSV report cannot proceed, because name '" ++ name ++ "' corresponds to two or more benchmarks. Please disambiguate them."
           exitFailure
       let augmented = IM.intersectionWith (,) namesMap smap
-      hasGCStats <- getRTSStatsEnabled
       bracket
         (do
           h <- openFile path WriteMode
@@ -1286,7 +1284,6 @@ lookupRepeatingElements = go S.empty
 
 csvOutput :: Handle -> IntMap (TestName, TVar Status) -> IO ()
 csvOutput h = traverse_ $ \(name, tv) -> do
-  hasGCStats <- getRTSStatsEnabled
   let csv = if hasGCStats then csvEstimateWithGC else csvEstimate
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
   case safeRead (resultDescription r) of
@@ -1448,7 +1445,6 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
   baseline <- case lookupOption opts of
     Nothing -> pure S.empty
     Just (BaselinePath path) -> S.fromList . joinQuotedFields . lines <$> (readFile path >>= evaluate . force)
-  hasGCStats <- getRTSStatsEnabled
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
   pure $ \name depR r -> case safeRead (resultDescription r) of
     Nothing  -> r
