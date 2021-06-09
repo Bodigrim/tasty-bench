@@ -1256,7 +1256,7 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
     let names = testsNames opts tree
         namesMap = IM.fromDistinctAscList $ zip [0..] names
     pure $ \smap -> do
-      case lookupRepeatingElements names of
+      case findNonUniqueElement names of
         Nothing -> pure ()
         Just name -> do -- 'die' is not available before base-4.8
           hPutStrLn stderr $ "CSV report cannot proceed, because name '" ++ name ++ "' corresponds to two or more benchmarks. Please disambiguate them."
@@ -1274,8 +1274,8 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
         (`csvOutput` augmented)
       pure $ const $ isSuccessful smap
 
-lookupRepeatingElements :: Ord a => [a] -> Maybe a
-lookupRepeatingElements = go S.empty
+findNonUniqueElement :: Ord a => [a] -> Maybe a
+findNonUniqueElement = go S.empty
   where
     go _ [] = Nothing
     go acc (x : xs)
