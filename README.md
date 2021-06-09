@@ -452,6 +452,11 @@ cat tasty-bench.csv \
 | sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
 ```
 
+Please refer to `gawk` manual, if you wish to process names with
+[commas](https://www.gnu.org/software/gawk/manual/gawk.html#Splitting-By-Content)
+or
+[quotes](https://www.gnu.org/software/gawk/manual/gawk.html#More-CSV).
+
 ## Comparison between benchmarks
 
 You can also compare benchmarks to each other without reaching to external tools,

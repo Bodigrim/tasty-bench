@@ -397,6 +397,10 @@ To fake @gauge@ in @--csvraw@ mode use
 
 > cat tasty-bench.csv | awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,$6+0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' | sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
 
+Please refer to @gawk@ manual, if you wish to process names
+with [commas](https://www.gnu.org/software/gawk/manual/gawk.html#Splitting-By-Content)
+or [quotes](https://www.gnu.org/software/gawk/manual/gawk.html#More-CSV).
+
 === Comparison between benchmarks
 
 You can also compare benchmarks to each other without reaching to
