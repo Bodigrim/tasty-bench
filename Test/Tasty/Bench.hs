@@ -1063,8 +1063,9 @@ ioToBench frc act = Benchmarkable go
 -- and compute its normal form (by means of 'force').
 --
 -- Pure subexpression of an effectful computation @x@
--- may be evaluated only once and get cached; use 'nfAppIO'
--- to avoid this.
+-- may be evaluated only once and get cached.
+-- To avoid surprising results it is usually preferable
+-- to use 'nfAppIO' instead.
 --
 -- Note that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
@@ -1086,8 +1087,9 @@ nfIO = ioToBench force
 -- and compute its weak head normal form.
 --
 -- Pure subexpression of an effectful computation @x@
--- may be evaluated only once and get cached; use 'whnfAppIO'
--- to avoid this.
+-- may be evaluated only once and get cached.
+-- To avoid surprising results it is usually preferable
+-- to use 'whnfAppIO' instead.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".
