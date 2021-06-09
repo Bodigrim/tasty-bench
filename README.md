@@ -222,17 +222,17 @@ is only of indicative and comparative significance.
 Configuring RTS to collect GC statistics
 (e. g., via `cabal bench --benchmark-options '+RTS -T'`
 or `stack bench --ba '+RTS -T'`) enables `tasty-bench` to estimate and report
-memory usage such as allocated and copied bytes:
+memory usage:
 
 ```
 All
   fibonacci numbers
     fifth:     OK (2.13s)
-       63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied
+       63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied, 2.0 MB peak memory
     tenth:     OK (1.71s)
-      809 ns ±  73 ns, 2.3 KB allocated,   0 B  copied
+      809 ns ±  73 ns, 2.3 KB allocated,   0 B  copied, 4.0 MB peak memory
     twentieth: OK (3.39s)
-      104 μs ± 4.9 μs, 277 KB allocated,  59 B  copied
+      104 μs ± 4.9 μs, 277 KB allocated,  59 B  copied, 5.0 MB peak memory
 
 All 3 tests passed (7.25s)
 ```
@@ -448,7 +448,7 @@ To fake `gauge` in `--csvraw` mode use
 
 ```sh
 cat tasty-bench.csv \
-| awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' \
+| awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,$6+0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' \
 | sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
 ```
 
@@ -552,6 +552,10 @@ Use `--help` to list command-line options.
 * `--svg`
 
   File to plot results in SVG format.
+
+* `+RTS -T`
+
+  Estimate and report memory usage.
 
 ## Custom command-line options
 

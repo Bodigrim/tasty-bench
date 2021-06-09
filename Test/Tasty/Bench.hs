@@ -194,16 +194,16 @@ indicative and comparative significance.
 Configuring RTS to collect GC statistics
 (e. g., via @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-T\'@ or
 @stack@ @bench@ @--ba@ @\'+RTS@ @-T\'@) enables @tasty-bench@ to estimate and
-report memory usage such as allocated and copied bytes:
+report memory usage:
 
 > All
 >   fibonacci numbers
 >     fifth:     OK (2.13s)
->        63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied
+>        63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied, 2.0 MB peak memory
 >     tenth:     OK (1.71s)
->       809 ns ±  73 ns, 2.3 KB allocated,   0 B  copied
+>       809 ns ±  73 ns, 2.3 KB allocated,   0 B  copied, 4.0 MB peak memory
 >     twentieth: OK (3.39s)
->       104 μs ± 4.9 μs, 277 KB allocated,  59 B  copied
+>       104 μs ± 4.9 μs, 277 KB allocated,  59 B  copied, 5.0 MB peak memory
 >
 > All 3 tests passed (7.25s)
 
@@ -395,7 +395,7 @@ would produce. If names do not contain commas, missing columns can be faked this
 
 To fake @gauge@ in @--csvraw@ mode use
 
-> cat tasty-bench.csv | awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' | sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
+> cat tasty-bench.csv | awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,$6+0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' | sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
 
 === Comparison between benchmarks
 
@@ -498,6 +498,10 @@ Use @--help@ to list command-line options.
 [@--svg@]:
 
     File to plot results in SVG format.
+
+[@+RTS@ @-T@]:
+
+    Estimate and report memory usage.
 
 === Custom command-line options
 
@@ -751,6 +755,7 @@ data Measurement = Measurement
   { measTime   :: !Word64 -- ^ time in picoseconds
   , measAllocs :: !Word64 -- ^ allocations in bytes
   , measCopied :: !Word64 -- ^ copied bytes
+  , measMaxMem :: !Word64 -- ^ max memory in use
   } deriving (Show, Read)
 
 data Estimate = Estimate
@@ -774,21 +779,22 @@ prettyEstimateWithGC (Estimate m stdev) =
   showPicos4 (measTime m)
   ++ (if stdev == 0 then ",          " else " ± " ++ showPicos3 (2 * stdev) ++ ", ")
   ++ showBytes (measAllocs m) ++ " allocated, "
-  ++ showBytes (measCopied m) ++ " copied"
+  ++ showBytes (measCopied m) ++ " copied, "
+  ++ showBytes (measMaxMem m) ++ " peak memory"
 
 csvEstimate :: Estimate -> String
 csvEstimate (Estimate m stdev) = show (measTime m) ++ "," ++ show (2 * stdev)
 
 csvEstimateWithGC :: Estimate -> String
 csvEstimateWithGC (Estimate m stdev) = show (measTime m) ++ "," ++ show (2 * stdev)
-  ++ "," ++ show (measAllocs m) ++ "," ++ show (measCopied m)
+  ++ "," ++ show (measAllocs m) ++ "," ++ show (measCopied m) ++ "," ++ show (measMaxMem m)
 
 predict
   :: Measurement -- ^ time for one run
   -> Measurement -- ^ time for two runs
   -> Estimate
-predict (Measurement t1 a1 c1) (Measurement t2 a2 c2) = Estimate
-  { estMean  = Measurement t (fit a1 a2) (fit c1 c2)
+predict (Measurement t1 a1 c1 m1) (Measurement t2 a2 c2 m2) = Estimate
+  { estMean  = Measurement t (fit a1 a2) (fit c1 c2) (max m1 m2)
   , estStdev = truncate (sqrt d :: Double)
   }
   where
@@ -819,30 +825,31 @@ getRTSStatsEnabled = pure False
 #endif
 #endif
 
-getAllocsAndCopied :: IO (Word64, Word64)
+getAllocsAndCopied :: IO (Word64, Word64, Word64)
 getAllocsAndCopied = do
   enabled <- getRTSStatsEnabled
-  if not enabled then pure (0, 0) else
+  if not enabled then pure (0, 0, 0) else
 #if MIN_VERSION_base(4,10,0)
-    (\s -> (allocated_bytes s, copied_bytes s)) <$> getRTSStats
+    (\s -> (allocated_bytes s, copied_bytes s, max_mem_in_use_bytes s)) <$> getRTSStats
 #elif MIN_VERSION_base(4,6,0)
-    (\s -> (fromIntegral $ bytesAllocated s, fromIntegral $ bytesCopied s)) <$> getGCStats
+    (\s -> (fromIntegral $ bytesAllocated s, fromIntegral $ bytesCopied s, fromIntegral $ peakMegabytesAllocated s * 1024 * 1024)) <$> getGCStats
 #else
-    pure (0, 0)
+    pure (0, 0, 0)
 #endif
 
 measure :: Word64 -> Benchmarkable -> IO Measurement
 measure n (Benchmarkable act) = do
   performGC
   startTime <- fromInteger <$> getCPUTime
-  (startAllocs, startCopied) <- getAllocsAndCopied
+  (startAllocs, startCopied, startMaxMemInUse) <- getAllocsAndCopied
   act n
   endTime <- fromInteger <$> getCPUTime
-  (endAllocs, endCopied) <- getAllocsAndCopied
+  (endAllocs, endCopied, endMaxMemInUse) <- getAllocsAndCopied
   pure $ Measurement
     { measTime   = endTime - startTime
     , measAllocs = endAllocs - startAllocs
     , measCopied = endCopied - startCopied
+    , measMaxMem = max endMaxMemInUse startMaxMemInUse
     }
 
 measureUntil :: Bool -> Timeout -> RelStDev -> Benchmarkable -> IO Estimate
@@ -858,7 +865,7 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
     go n t1 sumOfTs = do
       t2 <- measure (2 * n) b
 
-      let Estimate (Measurement meanN allocN copiedN) stdevN = predictPerturbed t1 t2
+      let Estimate (Measurement meanN allocN copiedN maxMemN) stdevN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
             NoTimeout -> False
             -- multiplying by 12/10 helps to avoid accidental timeouts
@@ -874,7 +881,7 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
 
       if isStDevInTargetRange || isTimeoutSoon
         then pure $ Estimate
-          { estMean  = Measurement (scale meanN) (scale allocN) (scale copiedN)
+          { estMean  = Measurement (scale meanN) (scale allocN) (scale copiedN) maxMemN
           , estStdev = scale stdevN }
         else go (2 * n) t2 sumOfTs'
 
@@ -1255,7 +1262,7 @@ csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
           h <- openFile path WriteMode
           hSetBuffering h LineBuffering
           hPutStrLn h $ "Name,Mean (ps),2*Stdev (ps)" ++
-            (if hasGCStats then ",Allocated,Copied" else "")
+            (if hasGCStats then ",Allocated,Copied,Peak Memory" else "")
           pure h
         )
         hClose
