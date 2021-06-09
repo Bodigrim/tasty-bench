@@ -585,7 +585,7 @@ import Data.Int (Int64)
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM
 import Data.IORef
-import Data.List (intercalate, stripPrefix, isPrefixOf, foldl', genericLength, genericDrop)
+import Data.List (intercalate, stripPrefix, isPrefixOf, genericLength, genericDrop)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Sequence (Seq, (<|))

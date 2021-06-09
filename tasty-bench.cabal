@@ -36,6 +36,8 @@ library
   ghc-options:      -O2 -Wall -fno-warn-unused-imports
   if impl(ghc < 7.10)
     ghc-options:    -fcontext-stack=30
+  if impl(ghc >= 8.0)
+    ghc-options:    -Wcompat
 
   build-depends:
     base >= 4.3 && < 5,
