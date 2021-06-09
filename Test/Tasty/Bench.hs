@@ -1295,8 +1295,12 @@ csvOutput h = traverse_ $ \(name, tv) -> do
 encodeCsv :: String -> String
 encodeCsv xs
   | any (`elem` xs) ",\"\n\r"
-  = '"' : concatMap (\x -> if x == '"' then "\"\"" else [x]) xs ++ "\""
+  = '"' : go xs -- opening quote
   | otherwise = xs
+  where
+    go [] = '"' : [] -- closing quote
+    go ('"' : ys) = '"' : '"' : go ys
+    go (y : ys) = y : go ys
 
 newtype SvgPath = SvgPath { _unSvgPath :: FilePath }
   deriving (Typeable)
@@ -1418,10 +1422,10 @@ svgRenderItem i iMax xMax name est@(Estimate m stdev) =
     shortTextTemplate = "<text fill=\"hsl(%i, 100%%, 40%%)\" y=\"%i\">%s</text>\n"
 
 encodeSvg :: String -> String
-encodeSvg = concatMap $ \x -> case x of
-  '<' -> "&lt;"
-  '&' -> "&amp;"
-  _   -> [x]
+encodeSvg [] = []
+encodeSvg ('<' : xs) = '&' : 'l' : 't' : ';' : encodeSvg xs
+encodeSvg ('&' : xs) = '&' : 'a' : 'm' : 'p' : ';' : encodeSvg xs
+encodeSvg (x : xs) = x : encodeSvg xs
 
 newtype BaselinePath = BaselinePath { _unBaselinePath :: FilePath }
   deriving (Typeable)
