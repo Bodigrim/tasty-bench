@@ -587,16 +587,17 @@ import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
 import Data.IntMap (IntMap)
+#if MIN_VERSION_containers(0,5,0)
+import qualified Data.IntMap.Strict as IM
+#else
 import qualified Data.IntMap as IM
+#endif
 import Data.IORef
 import Data.List (intercalate, stripPrefix, isPrefixOf, genericLength, genericDrop)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Sequence (Seq, (<|))
 import qualified Data.Sequence as Seq
-#if MIN_VERSION_containers(0,5,0)
-import Data.Set (lookupGE)
-#endif
 import qualified Data.Set as S
 import Data.Traversable (forM)
 import Data.Word (Word64)
