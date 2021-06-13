@@ -716,8 +716,7 @@ showPicos3 i
   | t < 995e9 = printf "%3.0f ms" (t / 1e9)
   | otherwise = printf "%4.2f s"  (t / 1e12)
   where
-    t :: Double
-    t = fromIntegral i
+    t = word64ToDouble i
 
 -- | Show picoseconds, fitting number in 4 characters.
 showPicos4 :: Word64 -> String
@@ -734,8 +733,7 @@ showPicos4 i
   | t < 995e9 = printf "%3.0f  ms" (t / 1e9)
   | otherwise = printf "%4.2f s"   (t / 1e12)
   where
-    t :: Double
-    t = fromIntegral i
+    t = word64ToDouble i
 
 showBytes :: Word64 -> String
 showBytes i
@@ -753,8 +751,7 @@ showBytes i
   | t < 11471568970838126592 = printf "%3.1f EB" (t / 1152921504606846976)
   | otherwise                = printf "%3.0f EB" (t / 1152921504606846976)
   where
-    t :: Double
-    t = fromIntegral i
+    t = word64ToDouble i
 
 data Measurement = Measurement
   { measTime   :: !Word64 -- ^ time in picoseconds
@@ -806,8 +803,8 @@ predict (Measurement t1 a1 c1 m1) (Measurement t2 a2 c2 m2) = Estimate
     fit x1 x2 = x1 `quot` 5 + 2 * (x2 `quot` 5)
     t = fit t1 t2
     sqr x = x * x
-    d = sqr (fromIntegral t1 -     fromIntegral t)
-      + sqr (fromIntegral t2 - 2 * fromIntegral t)
+    d = sqr (word64ToDouble t1 -     word64ToDouble t)
+      + sqr (word64ToDouble t2 - 2 * word64ToDouble t)
 
 predictPerturbed :: Measurement -> Measurement -> Estimate
 predictPerturbed t1 t2 = Estimate
@@ -836,7 +833,7 @@ getAllocsAndCopied = do
 #if MIN_VERSION_base(4,10,0)
     (\s -> (allocated_bytes s, copied_bytes s, max_mem_in_use_bytes s)) <$> getRTSStats
 #elif MIN_VERSION_base(4,6,0)
-    (\s -> (fromIntegral $ bytesAllocated s, fromIntegral $ bytesCopied s, fromIntegral $ peakMegabytesAllocated s * 1024 * 1024)) <$> getGCStats
+    (\s -> (int64ToWord64 $ bytesAllocated s, int64ToWord64 $ bytesCopied s, int64ToWord64 $ peakMegabytesAllocated s * 1024 * 1024)) <$> getGCStats
 #else
     pure (0, 0, 0)
 #endif
@@ -874,8 +871,8 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
             NoTimeout -> False
             -- multiplying by 12/10 helps to avoid accidental timeouts
             Timeout micros _ -> (sumOfTs' + 3 * measTime t2) `quot` (1000000 * 10 `quot` 12) >= fromInteger micros
-          isStDevInTargetRange = stdevN < truncate (max 0 targetRelStDev * fromIntegral meanN)
-          scale = (`quot` fromIntegral n)
+          isStDevInTargetRange = stdevN < truncate (max 0 targetRelStDev * word64ToDouble meanN)
+          scale = (`quot` n)
           sumOfTs' = sumOfTs + measTime t1
 
       case timeout of
@@ -900,7 +897,7 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
 -- to run at least thrice or an iteration takes unusually long.
 measureCpuTime :: Timeout -> RelStDev -> Benchmarkable -> IO Double
 measureCpuTime
-    = ((fmap ((/ 1e12) . fromIntegral . measTime . estMean) .) .)
+    = ((fmap ((/ 1e12) . word64ToDouble . measTime . estMean) .) .)
     . measureUntil False
 
 instance IsTest Benchmarkable where
@@ -1355,7 +1352,7 @@ svgRender pairs = header ++ concat (zipWith
 
     l = genericLength pairs
     findMaxX (Estimate m stdev) = measTime m + 2 * stdev
-    xMax = fromIntegral $ maximum $ minBound : map (findMaxX . snd) pairs
+    xMax = word64ToDouble $ maximum $ minBound : map (findMaxX . snd) pairs
     header = printf "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"%i\" width=\"%f\" font-size=\"%i\" font-family=\"sans-serif\" stroke-width=\"2\">\n<g transform=\"translate(%f 0)\">\n" (svgItemOffset l - 15) svgCanvasWidth svgFontSize svgCanvasMargin
     footer = "</g>\n</svg>\n"
 
@@ -1366,7 +1363,7 @@ svgCanvasMargin :: Double
 svgCanvasMargin = 10
 
 svgItemOffset :: Word64 -> Word64
-svgItemOffset i = 22 + 55 * fromIntegral i
+svgItemOffset i = 22 + 55 * i
 
 svgFontSize :: Word64
 svgFontSize = 16
@@ -1383,9 +1380,9 @@ svgRenderItem i iMax xMax name est@(Estimate m stdev) =
     x1 = boxWidth - whiskerWidth
     x2 = boxWidth + whiskerWidth
     deg = (i * 360) `quot` iMax
-    glyphWidth = fromIntegral svgFontSize / 2
+    glyphWidth = word64ToDouble svgFontSize / 2
 
-    scale w       = fromIntegral w * (svgCanvasWidth - 2 * svgCanvasMargin) / xMax
+    scale w       = word64ToDouble w * (svgCanvasWidth - 2 * svgCanvasMargin) / xMax
     boxWidth      = scale (measTime m)
     whiskerWidth  = scale (2 * stdev)
     boxHeight     = 22
@@ -1458,8 +1455,8 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
       where
         slowDown = compareVsBaseline baseline name est
         isAcceptable -- ifSlow/ifFast may be infinite, so we cannot 'truncate'
-          =  fromIntegral slowDown <=  100 * ifSlow
-          && fromIntegral slowDown >= -100 * ifFast
+          =  int64ToDouble slowDown <=  100 * ifSlow
+          && int64ToDouble slowDown >= -100 * ifFast
         bcomp = case depR >>= safeRead . resultDescription of
           Nothing -> ""
           Just (Response depEst _ _) -> printf ", %.2fx" (estTime est / estTime depEst)
@@ -1476,7 +1473,7 @@ joinQuotedFields (x : xs)
     areQuotesBalanced = even . length . filter (== '"')
 
 estTime :: Estimate -> Double
-estTime = fromIntegral . measTime . estMean
+estTime = word64ToDouble . measTime . estMean
 
 -- | Return slow down in percents.
 compareVsBaseline :: S.Set String -> TestName -> Estimate -> Int64
@@ -1484,11 +1481,10 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
   Nothing -> 0
   Just (oldTime, oldDoubleSigma)
     -- time and oldTime must be signed integers to use 'abs'
-    | abs (time - oldTime) < max (2 * fromIntegral stdev) oldDoubleSigma -> 0
+    | abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma -> 0
     | otherwise -> 100 * (time - oldTime) `quot` oldTime
   where
-    time :: Int64
-    time = fromIntegral $ measTime m
+    time = word64ToInt64 $ measTime m
 
     mOld :: Maybe (Int64, Int64)
     mOld = do
@@ -1605,3 +1601,17 @@ postprocessResult f src = do
       adNauseam = doUpdate >>= (`unless` adNauseam)
   _ <- forkIO adNauseam
   pure $ fmap (\(_, _, _, a) -> a) paired
+
+word64ToDouble :: Word64 -> Double
+word64ToDouble = fromIntegral
+
+int64ToDouble :: Int64 -> Double
+int64ToDouble = fromIntegral
+
+word64ToInt64 :: Word64 -> Int64
+word64ToInt64 = fromIntegral
+
+#if !MIN_VERSION_base(4,10,0) && MIN_VERSION_base(4,6,0)
+int64ToWord64 :: Int64 -> Word64
+int64ToWord64 = fromIntegral
+#endif
