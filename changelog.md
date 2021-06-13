@@ -1,6 +1,7 @@
-# 0.2.6
+# 0.3
 
 * Report mean time with 3 significant digits.
+* Report peak memory usage, when run with `+RTS -T`.
 * Run benchmarks only once, if `RelStDev` is infinite.
 * Make `Benchmarkable` constructor public.
 * Expose `measureCpuTime` helper to run benchmarks manually.
