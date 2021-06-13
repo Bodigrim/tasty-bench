@@ -731,7 +731,7 @@ showPicos4 i
   | t < 995e7 = printf "%4.2f ms"  (t / 1e9)
   | t < 995e8 = printf "%4.1f ms"  (t / 1e9)
   | t < 995e9 = printf "%3.0f  ms" (t / 1e9)
-  | otherwise = printf "%4.2f s"   (t / 1e12)
+  | otherwise = printf "%4.3f s"   (t / 1e12)
   where
     t = word64ToDouble i
 
