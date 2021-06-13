@@ -237,6 +237,9 @@ All
 All 3 tests passed (7.25s)
 ```
 
+This data is reported as per `RTSStats` fields: `allocated_bytes`, `copied_bytes`
+and `max_mem_in_use_bytes`.
+
 ## Combining tests and benchmarks
 
 When optimizing an existing function, it is important to check that its
