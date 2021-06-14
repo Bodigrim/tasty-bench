@@ -5,6 +5,7 @@
 * Run benchmarks only once, if `RelStDev` is infinite.
 * Make `Benchmarkable` constructor public.
 * Expose `measureCpuTime` helper to run benchmarks manually.
+* Expose `CsvPath`, `BaselinePath`, `SvgPath`.
 
 # 0.2.5
 

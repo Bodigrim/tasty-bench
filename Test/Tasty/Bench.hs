@@ -578,6 +578,9 @@ module Test.Tasty.Bench
   , RelStDev(..)
   , FailIfSlower(..)
   , FailIfFaster(..)
+  , CsvPath(..)
+  , BaselinePath(..)
+  , SvgPath(..)
   ) where
 
 import Prelude hiding (Int, Integer)
@@ -1237,7 +1240,32 @@ envWithCleanup res fin f = withResource
   (void . fin)
   (f . unsafePerformIO)
 
-newtype CsvPath = CsvPath { _unCsvPath :: FilePath }
+-- | A path to write results in CSV format, populated by @--csv@.
+--
+-- This is an option of 'csvReporter' and can be set only globally.
+-- Modifying it via 'adjustOption' or 'localOption' does not have any effect.
+-- One can however pass it to 'tryIngredients' 'benchIngredients'. For example,
+-- here is how to set a default CSV location:
+--
+-- @
+-- import Data.Maybe
+-- import System.Exit
+-- import Test.Tasty.Bench
+-- import Test.Tasty.Ingredients
+-- import Test.Tasty.Options
+-- import Test.Tasty.Runners
+--
+-- main :: IO ()
+-- main = do
+--   let benchmarks = bgroup \"All\" ...
+--   opts <- parseOptions benchIngredients benchmarks
+--   let opts' = changeOption (Just . fromMaybe (CsvPath "foo.csv")) opts
+--   case tryIngredients benchIngredients opts' benchmarks of
+--     Nothing -> exitFailure
+--     Just mb -> mb >>= \b -> if b then exitSuccess else exitFailure
+-- @
+--
+newtype CsvPath = CsvPath FilePath
   deriving (Typeable)
 
 instance IsOption (Maybe CsvPath) where
@@ -1302,7 +1330,13 @@ encodeCsv xs
     go ('"' : ys) = '"' : '"' : go ys
     go (y : ys) = y : go ys
 
-newtype SvgPath = SvgPath { _unSvgPath :: FilePath }
+-- | A path to plot results in SVG format, populated by @--svg@.
+--
+-- This is an option of 'svgReporter' and can be set only globally.
+-- Modifying it via 'adjustOption' or 'localOption' does not have any effect.
+-- One can however pass it to 'tryIngredients' 'benchIngredients'.
+--
+newtype SvgPath = SvgPath FilePath
   deriving (Typeable)
 
 instance IsOption (Maybe SvgPath) where
@@ -1427,7 +1461,13 @@ encodeSvg ('<' : xs) = '&' : 'l' : 't' : ';' : encodeSvg xs
 encodeSvg ('&' : xs) = '&' : 'a' : 'm' : 'p' : ';' : encodeSvg xs
 encodeSvg (x : xs) = x : encodeSvg xs
 
-newtype BaselinePath = BaselinePath { _unBaselinePath :: FilePath }
+-- | A path to read baseline results in CSV format, populated by @--baseline@.
+--
+-- This is an option of 'csvReporter' and can be set only globally.
+-- Modifying it via 'adjustOption' or 'localOption' does not have any effect.
+-- One can however pass it to 'tryIngredients' 'benchIngredients'.
+--
+newtype BaselinePath = BaselinePath FilePath
   deriving (Typeable)
 
 instance IsOption (Maybe BaselinePath) where
