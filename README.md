@@ -1,4 +1,4 @@
-# tasty-bench [![Hackage](http://img.shields.io/hackage/v/tasty-bench.svg)](https://hackage.haskell.org/package/tasty-bench) [![Stackage Nightly](http://stackage.org/package/tasty-bench/badge/nightly)](http://stackage.org/nightly/package/tasty-bench)
+# tasty-bench [![Hackage](http://img.shields.io/hackage/v/tasty-bench.svg)](https://hackage.haskell.org/package/tasty-bench) [![Stackage LTS](http://stackage.org/package/tasty-bench/badge/lts)](http://stackage.org/lts/package/tasty-bench) [![Stackage Nightly](http://stackage.org/package/tasty-bench/badge/nightly)](http://stackage.org/nightly/package/tasty-bench)
 
 Featherlight benchmark framework (only one file!) for performance measurement
 with API mimicking [`criterion`](http://hackage.haskell.org/package/criterion)
