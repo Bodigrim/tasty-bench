@@ -13,6 +13,7 @@ and between benchmarks.
 - [How to switch?](#how-to-switch)
 - [How to write a benchmark?](#how-to-write-a-benchmark)
 - [How to read results?](#how-to-read-results)
+- [Wall-clock time vs. CPU time](#wall-clock-time-vs-cpu-time)
 - [Statistical model](#statistical-model)
 - [Memory usage](#memory-usage)
 - [Combining tests and benchmarks](#combining-tests-and-benchmarks)
@@ -173,9 +174,26 @@ The interval ±1.753 ns answers
 for [68%](https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule)
 of samples only, double it to estimate the behavior in 95% of cases.
 
-When benchmarking multithreaded algorithms, note
-that `tasty-bench` reports total elapsed CPU time across all cores, while
-`criterion` and `gauge` print wall-clock time.
+## Wall-clock time vs. CPU time
+
+What time are we talking about?
+Both `criterion` and `gauge` by default report wall-clock time, which is
+affected by any other application which runs concurrently.
+While ideally benchmarks are executed on a dedicated server without any other load,
+but — let's face the truth — most of developers run benchmarks
+on a laptop with a hundred other services and a window manager, and
+watch videos while waiting for benchmarks to finish. That's the cause
+of a notorious "variance introduced by outliers: 88% (severely inflated)" warning.
+
+To alleviate this issue `tasty-bench` measures CPU time by `getCPUTime`
+instead of wall-clock time.
+It does not provide a perfect isolation from other processes (e. g.,
+if CPU cache is spoiled by others, populating data back from RAM
+is your burden), but is significantly more stable.
+
+Caveat: this means that for multithreaded algorithms
+`tasty-bench` reports total elapsed CPU time across all cores, while
+`criterion` and `gauge` print maximum of core's wall-clock time.
 
 ## Statistical model
 
@@ -328,7 +346,13 @@ look for another way to speed up generation of Fibonacci numbers.
   Unhandled resource. Probably a bug in the runner you're using.
   ```
 
-  this is probably caused by `env` or `envWithCleanup` affecting benchmarks structure.
+or
+
+  ```
+  Unexpected state of the resource (NotCreated) in getResource. Report as a tasty bug.
+  ```
+
+  this is likely caused by `env` or `envWithCleanup` affecting benchmarks structure.
   You can use `env` to read test data from `IO`, but not to read benchmark names
   or affect their hierarchy in other way. This is a fundamental restriction of `tasty`
   to list and filter benchmarks without launching missiles.
