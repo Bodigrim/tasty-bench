@@ -1,10 +1,11 @@
 name:          tasty-bench
-version:       0.2.5
+version:       0.3
 cabal-version: 1.18
 build-type:    Simple
 license:       MIT
 license-file:  LICENSE
 copyright:     2021 Andrew Lelechenko
+author:        Andrew Lelechenko
 maintainer:    Andrew Lelechenko <andrew.lelechenko@gmail.com>
 homepage:      https://github.com/Bodigrim/tasty-bench
 bug-reports:   https://github.com/Bodigrim/tasty-bench/issues
