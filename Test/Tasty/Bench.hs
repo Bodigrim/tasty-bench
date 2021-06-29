@@ -629,6 +629,9 @@ import qualified Data.Set as S
 import Data.Traversable (forM)
 import Data.Word (Word64)
 import GHC.Conc
+#if MIN_VERSION_base(4,5,0)
+import GHC.IO.Encoding
+#endif
 #if MIN_VERSION_base(4,6,0)
 import GHC.Stats
 #endif
@@ -991,7 +994,11 @@ type Benchmark = TestTree
 -- and 'Gauge.defaultMain'.
 --
 defaultMain :: [Benchmark] -> IO ()
-defaultMain = Test.Tasty.defaultMainWithIngredients benchIngredients . testGroup "All"
+defaultMain bs = do
+#if MIN_VERSION_base(4,5,0)
+    setLocaleEncoding utf8
+#endif
+    Test.Tasty.defaultMainWithIngredients benchIngredients $ testGroup "All" bs
 
 -- | List of default benchmark ingredients. This is what 'defaultMain' runs.
 --
