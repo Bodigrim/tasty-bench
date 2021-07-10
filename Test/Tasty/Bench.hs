@@ -163,7 +163,7 @@ To alleviate this issue @tasty-bench@ measures CPU time by 'getCPUTime'
 instead of wall-clock time.
 It does not provide a perfect isolation from other processes (e. g.,
 if CPU cache is spoiled by others, populating data back from RAM
-is your burden), but is significantly more stable.
+is your burden), but is a bit more stable.
 
 Caveat: this means that for multithreaded algorithms
 @tasty-bench@ reports total elapsed CPU time across all cores, while
