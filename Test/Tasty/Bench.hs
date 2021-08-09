@@ -319,6 +319,11 @@ another way to speed up generation of Fibonacci numbers.
     way. This is a fundamental restriction of @tasty@ to list and filter
     benchmarks without launching missiles.
 
+-   If benchmarks fail with @Test dependencies form a loop@, this is likely
+    because of 'bcompare', which compares a benchmark with itself.
+    Locating a benchmark in a global environment may be tricky, please refer to
+    [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns) for details.
+
 === Isolating interfering benchmarks
 
 One difficulty of benchmarking in Haskell is that it is hard to isolate
