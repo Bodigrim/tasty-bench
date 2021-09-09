@@ -417,6 +417,10 @@ also using @--hide-successes@ to show only problematic benchmarks, or
 even [@tasty-rerun@](http://hackage.haskell.org/package/tasty-rerun)
 package to focus on rerunning failing items only.
 
+If you wish to compare two CSV reports non-interactively, here is a handy `awk` incantation:
+
+> awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
+
 Note that columns in CSV report are different from what @criterion@ or @gauge@
 would produce. If names do not contain commas, missing columns can be faked this way:
 
