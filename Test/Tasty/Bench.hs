@@ -581,6 +581,7 @@ Here is an example:
 
 module Test.Tasty.Bench
   (
+#ifdef MIN_VERSION_tasty
   -- * Running 'Benchmark'
     defaultMain
   , Benchmark
@@ -591,8 +592,10 @@ module Test.Tasty.Bench
 #endif
   , env
   , envWithCleanup
+  ,
+#endif
   -- * Creating 'Benchmarkable'
-  , Benchmarkable(..)
+    Benchmarkable(..)
   , nf
   , whnf
   , nfIO
@@ -600,6 +603,7 @@ module Test.Tasty.Bench
   , nfAppIO
   , whnfAppIO
   , measureCpuTime
+#ifdef MIN_VERSION_tasty
   -- * Ingredients
   , benchIngredients
   , consoleBenchReporter
@@ -611,9 +615,14 @@ module Test.Tasty.Bench
   , CsvPath(..)
   , BaselinePath(..)
   , SvgPath(..)
+#else
+  , Timeout(..)
+  , RelStDev(..)
+#endif
   ) where
 
 import Prelude hiding (Int, Integer)
+import qualified Prelude
 import Control.Applicative
 import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force)
@@ -622,19 +631,10 @@ import Control.Monad (void, unless, guard, (>=>), when)
 import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
-import Data.IntMap (IntMap)
-#if MIN_VERSION_containers(0,5,0)
-import qualified Data.IntMap.Strict as IM
-#else
-import qualified Data.IntMap as IM
-#endif
 import Data.IORef
 import Data.List (intercalate, stripPrefix, isPrefixOf, genericLength, genericDrop)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
-import Data.Sequence (Seq, (<|))
-import qualified Data.Sequence as Seq
-import qualified Data.Set as S
 import Data.Traversable (forM)
 import Data.Word (Word64)
 import GHC.Conc
@@ -645,7 +645,22 @@ import GHC.IO.Encoding
 import GHC.Stats
 #endif
 import System.CPUTime
+import System.Exit
+import System.IO
+import System.IO.Unsafe
 import System.Mem
+import Text.Printf
+
+#ifdef MIN_VERSION_tasty
+#if MIN_VERSION_containers(0,5,0)
+import qualified Data.IntMap.Strict as IM
+#else
+import qualified Data.IntMap as IM
+#endif
+import Data.IntMap (IntMap)
+import Data.Sequence (Seq, (<|))
+import qualified Data.Sequence as Seq
+import qualified Data.Set as S
 import Test.Tasty hiding (defaultMain)
 import qualified Test.Tasty
 import Test.Tasty.Ingredients
@@ -657,10 +672,17 @@ import Test.Tasty.Patterns.Types (Expr (And, StringLit))
 #endif
 import Test.Tasty.Providers
 import Test.Tasty.Runners
-import Text.Printf
-import System.Exit
-import System.IO
-import System.IO.Unsafe
+#endif
+
+#ifndef MIN_VERSION_tasty
+data Timeout
+  = Timeout
+    Prelude.Integer -- ^ number of microseconds (e. g., 200000)
+    String          -- ^ textual representation (e. g., @"0.2s"@)
+  | NoTimeout
+  deriving (Show)
+#endif
+
 
 -- | In addition to @--stdev@ command-line option,
 -- one can adjust target relative standard deviation
@@ -682,6 +704,7 @@ import System.IO.Unsafe
 newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)
 
+#ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
   defaultValue = RelStDev 0.05
   parseValue = fmap RelStDev . parsePositivePercents
@@ -733,6 +756,7 @@ parsePositivePercents xs = do
   x <- safeRead xs
   guard (x > 0)
   pure (x / 100)
+#endif
 
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
 -- 'nfAppIO', 'whnfAppIO' below.
@@ -742,6 +766,8 @@ parsePositivePercents xs = do
 newtype Benchmarkable = Benchmarkable
   { unBenchmarkable :: Word64 -> IO () -- ^ Run benchmark given number of times.
   } deriving (Typeable)
+
+#ifdef MIN_VERSION_tasty
 
 -- | Show picoseconds, fitting number in 3 characters.
 showPicos3 :: Word64 -> String
@@ -791,6 +817,7 @@ showBytes i
   | otherwise                = printf "%3.0f EB" (t / 1152921504606846976)
   where
     t = word64ToDouble i
+#endif
 
 data Measurement = Measurement
   { measTime   :: !Word64 -- ^ time in picoseconds
@@ -804,6 +831,7 @@ data Estimate = Estimate
   , estStdev :: !Word64  -- ^ stdev in picoseconds
   } deriving (Show, Read)
 
+#ifdef MIN_VERSION_tasty
 data Response = Response
   { respEstimate :: !Estimate
   , respIfSlower :: !FailIfSlower -- ^ saved value of --fail-if-slower
@@ -829,6 +857,7 @@ csvEstimate (Estimate m stdev) = show (measTime m) ++ "," ++ show (2 * stdev)
 csvEstimateWithGC :: Estimate -> String
 csvEstimateWithGC (Estimate m stdev) = show (measTime m) ++ "," ++ show (2 * stdev)
   ++ "," ++ show (measAllocs m) ++ "," ++ show (measCopied m) ++ "," ++ show (measMaxMem m)
+#endif
 
 predict
   :: Measurement -- ^ time for one run
@@ -939,6 +968,8 @@ measureCpuTime
     = ((fmap ((/ 1e12) . word64ToDouble . measTime . estMean) .) .)
     . measureUntil False
 
+#ifdef MIN_VERSION_tasty
+
 instance IsTest Benchmarkable where
   testOptions = pure
     [ Option (Proxy :: Proxy RelStDev)
@@ -1013,6 +1044,8 @@ defaultMain bs = do
 --
 benchIngredients :: [Ingredient]
 benchIngredients = [listingTests, composeReporters consoleBenchReporter (composeReporters csvReporter svgReporter)]
+
+#endif
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
 funcToBench frc = (Benchmarkable .) . go
@@ -1219,6 +1252,8 @@ nfAppIO = ioFuncToBench force
 whnfAppIO :: (a -> IO b) -> a -> Benchmarkable
 whnfAppIO = ioFuncToBench id
 {-# INLINE whnfAppIO #-}
+
+#ifdef MIN_VERSION_tasty
 
 -- | Run benchmarks in the given environment, usually reading large input data from file.
 --
@@ -1682,14 +1717,16 @@ postprocessResult f src = do
   _ <- forkIO adNauseam
   pure $ fmap (\(_, _, _, a) -> a) paired
 
-word64ToDouble :: Word64 -> Double
-word64ToDouble = fromIntegral
-
 int64ToDouble :: Int64 -> Double
 int64ToDouble = fromIntegral
 
 word64ToInt64 :: Word64 -> Int64
 word64ToInt64 = fromIntegral
+
+#endif
+
+word64ToDouble :: Word64 -> Double
+word64ToDouble = fromIntegral
 
 #if !MIN_VERSION_base(4,10,0) && MIN_VERSION_base(4,6,0)
 int64ToWord64 :: Int64 -> Word64

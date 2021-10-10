@@ -30,6 +30,13 @@ source-repository head
   type: git
   location: https://github.com/Bodigrim/tasty-bench
 
+flag tasty
+  default: True
+  manual: True
+  description:
+    When disabled, reduces API to functions independent of @tasty@: combinators
+    to construct @Benchmarkable@ and @measureCpuTime@.
+
 library
   exposed-modules:  Test.Tasty.Bench
   hs-source-dirs:   .
@@ -42,9 +49,11 @@ library
 
   build-depends:
     base >= 4.3 && < 5,
-    containers >= 0.4,
-    deepseq >= 1.1,
-    tasty >= 0.11.3
+    deepseq >= 1.1
+  if flag(tasty)
+    build-depends:
+      containers >= 0.4,
+      tasty >= 0.11.3
   if impl(ghc < 7.8)
     build-depends:
       tagged >= 0.2

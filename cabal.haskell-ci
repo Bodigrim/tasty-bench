@@ -1,0 +1,2 @@
+constraint-set no-tasty
+  constraints: tasty-bench -tasty
