@@ -651,6 +651,10 @@ import System.IO.Unsafe
 import System.Mem
 import Text.Printf
 
+#ifdef DEBUG
+import Debug.Trace
+#endif
+
 #ifdef MIN_VERSION_tasty
 #if MIN_VERSION_containers(0,5,0)
 import qualified Data.IntMap.Strict as IM
@@ -914,12 +918,17 @@ measure n (Benchmarkable act) = do
   act n
   endTime <- fromInteger <$> getCPUTime
   (endAllocs, endCopied, endMaxMemInUse) <- getAllocsAndCopied
-  pure $ Measurement
-    { measTime   = endTime - startTime
-    , measAllocs = endAllocs - startAllocs
-    , measCopied = endCopied - startCopied
-    , measMaxMem = max endMaxMemInUse startMaxMemInUse
-    }
+  let meas = Measurement
+        { measTime   = endTime - startTime
+        , measAllocs = endAllocs - startAllocs
+        , measCopied = endCopied - startCopied
+        , measMaxMem = max endMaxMemInUse startMaxMemInUse
+        }
+#ifdef DEBUG
+  pure $ trace (show n ++ (if n == 1 then " iteration gives " else " iterations give ") ++ show meas) meas
+#else
+  pure meas
+#endif
 
 measureUntil :: Bool -> Timeout -> RelStDev -> Benchmarkable -> IO Estimate
 measureUntil _ _ (RelStDev targetRelStDev) b

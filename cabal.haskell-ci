@@ -1,2 +1,8 @@
 constraint-set no-tasty
   constraints: tasty-bench -tasty
+
+constraint-set debug
+  constraints: tasty-bench +debug
+
+constraint-set no-tasty-debug
+  constraints: tasty-bench -tasty +debug

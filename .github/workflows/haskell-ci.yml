@@ -273,6 +273,14 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
+      - name: constraint set no-tasty-debug
+        run: |
+          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty-bench -tasty +debug' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty-bench -tasty +debug' all
+      - name: constraint set debug
+        run: |
+          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty-bench +debug' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty-bench +debug' all
       - name: constraint set no-tasty
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty-bench -tasty' --dependencies-only -j2 all
