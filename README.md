@@ -360,7 +360,7 @@ look for another way to speed up generation of Fibonacci numbers.
 * If benchmarks fail with `Test dependencies form a loop`, this is likely
   because of `bcompare`, which compares a benchmark with itself.
   Locating a benchmark in a global environment may be tricky, please refer to
-  [`tasty` documentation](https://github.com/feuerbach/tasty#patterns) for details.
+  [`tasty` documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
 
 ## Isolating interfering benchmarks
 
@@ -536,7 +536,7 @@ bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
 ```
 
 is a more robust choice of
-an [`awk` pattern](https://github.com/feuerbach/tasty#patterns) here.
+an [`awk` pattern](https://github.com/UnkindPartition/tasty#patterns) here.
 
 ## Plotting results
 
@@ -555,7 +555,7 @@ Use `--help` to list command-line options.
 
   This is a standard `tasty` option, which allows filtering benchmarks
   by a pattern or `awk` expression. Please refer to
-  [`tasty` documentation](https://github.com/feuerbach/tasty#patterns)
+  [`tasty` documentation](https://github.com/UnkindPartition/tasty#patterns)
   for details.
 
 * `-t`, `--timeout`

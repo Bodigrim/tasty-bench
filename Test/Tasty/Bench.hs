@@ -322,7 +322,7 @@ another way to speed up generation of Fibonacci numbers.
 -   If benchmarks fail with @Test dependencies form a loop@, this is likely
     because of 'bcompare', which compares a benchmark with itself.
     Locating a benchmark in a global environment may be tricky, please refer to
-    [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns) for details.
+    [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
 
 === Isolating interfering benchmarks
 
@@ -470,7 +470,7 @@ Locating a baseline benchmark in larger suites could get tricky;
 > bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
 
 is a more robust choice of
-an <https://github.com/feuerbach/tasty#patterns awk pattern> here.
+an <https://github.com/UnkindPartition/tasty#patterns awk pattern> here.
 
 === Plotting results
 
@@ -489,7 +489,7 @@ Use @--help@ to list command-line options.
 
     This is a standard @tasty@ option, which allows filtering benchmarks
     by a pattern or @awk@ expression. Please refer
-    to [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns)
+    to [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns)
     for details.
 
 [@-t@, @--timeout@]:
@@ -1016,7 +1016,7 @@ bgroup = testGroup
 -- The first argument is a @tasty@ pattern, which must unambiguously
 -- match a unique baseline benchmark. Locating a benchmark in a global environment
 -- may be tricky, please refer to
--- [@tasty@ documentation](https://github.com/feuerbach/tasty#patterns) for details.
+-- [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
 --
 -- A benchmark (or a group of benchmarks), specified in the second argument,
 -- will be compared against the baseline benchmark by dividing measured mean times.
@@ -1072,13 +1072,13 @@ funcToBench frc = (Benchmarkable .) . go
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
--- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentially @x@ may
 -- be an infinite structure. Thus @x@ will be evaluated in course of the first
 -- application of @f@. This noisy measurement is to be discarded soon,
 -- but if @x@ is not a primitive data type, consider forcing its evaluation
 -- separately, e. g., via 'env' or 'withResource'.
 --
--- Here is a textbook antipattern: 'nf' 'sum' @[1..1000000]@.
+-- Here is a textbook anti-pattern: 'nf' 'sum' @[1..1000000]@.
 -- Since an input list is shared by multiple invocations of 'sum',
 -- it will be allocated in memory in full, putting immense pressure
 -- on garbage collector. Also no list fusion will happen.
@@ -1111,7 +1111,7 @@ nf = funcToBench force
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
--- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentially @x@ may
 -- be an infinite structure. Thus @x@ will be evaluated in course of the first
 -- application of @f@. This noisy measurement is to be discarded soon,
 -- but if @x@ is not a primitive data type, consider forcing its evaluation
@@ -1124,7 +1124,7 @@ nf = funcToBench force
 -- Unless you understand precisely, what is measured,
 -- it is recommended to use 'nf' instead.
 --
--- Here is a textbook antipattern: 'whnf' ('Data.List.replicate' @1000000@) @1@.
+-- Here is a textbook anti-pattern: 'whnf' ('Data.List.replicate' @1000000@) @1@.
 -- This will succeed in a matter of nanoseconds, because weak head
 -- normal form forces only the first element of the list.
 --
@@ -1211,7 +1211,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
--- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentially @x@ may
 -- be an infinite structure. Thus @x@ will be evaluated in course of the first
 -- application of @f@. This noisy measurement is to be discarded soon,
 -- but if @x@ is not a primitive data type, consider forcing its evaluation
@@ -1240,7 +1240,7 @@ nfAppIO = ioFuncToBench force
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
 -- The same thunk of @x@ is shared by multiple calls of @f@. We cannot evaluate
--- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentialy @x@ may
+-- @x@ beforehand: there is no 'NFData' @a@ constraint, and potentially @x@ may
 -- be an infinite structure. Thus @x@ will be evaluated in course of the first
 -- application of @f@. This noisy measurement is to be discarded soon,
 -- but if @x@ is not a primitive data type, consider forcing its evaluation
