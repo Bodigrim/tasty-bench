@@ -375,7 +375,7 @@ Assuming that a benchmark is declared in @cabal@ file as
 @benchmark@ @my-bench@ component, let’s first find its executable:
 
 > cabal build --enable-benchmarks my-bench
-> MYBENCH=$(cabal list-bin my-bench)
+> MYBENCH=$(cabal list-bin my-bench) # available since cabal-3.4
 
 Now list all benchmark names (hopefully, they do not contain newlines),
 escape quotes and slashes, and run each of them separately:

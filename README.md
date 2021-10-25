@@ -418,7 +418,7 @@ let's first find its executable:
 
 ```bash
 cabal build --enable-benchmarks my-bench
-MYBENCH=$(cabal list-bin my-bench)
+MYBENCH=$(cabal list-bin my-bench) # available since cabal-3.4
 ```
 
 Now list all benchmark names (hopefully, they do not contain newlines),
