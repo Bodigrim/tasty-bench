@@ -656,6 +656,12 @@ import Debug.Trace
 #endif
 
 #ifdef MIN_VERSION_tasty
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (Monoid(..))
+#endif
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup(..))
+#endif
 #if MIN_VERSION_containers(0,5,0)
 import qualified Data.IntMap.Strict as IM
 #else
@@ -1636,6 +1642,26 @@ formatSlowDown n = case n `compare` 0 of
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
 
+data Unique a = None | Unique !a | NotUnique
+
+appendUnique :: Unique a -> Unique a -> Unique a
+appendUnique None a = a
+appendUnique a None = a
+appendUnique _ _ = NotUnique
+
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup (Unique a) where
+  (<>) = appendUnique
+#endif
+
+instance Monoid (Unique a) where
+  mempty = None
+#if MIN_VERSION_base(4,9,0)
+  mappend = (<>)
+#else
+  mappend = appendUnique
+#endif
+
 modifyConsoleReporter
     :: [OptionDescription]
     -> (OptionSet -> IO (TestName -> Maybe Result -> Result -> Result))
@@ -1652,7 +1678,7 @@ modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
       TestReporter d c -> (d, c)
       _ -> error "modifyConsoleReporter: consoleTestReporter must be TestReporter"
 
-    isSingle [a] = Just a
+    isSingle (Unique a) = Just a
     isSingle _ = Nothing
 
 testNameSeqs :: OptionSet -> TestTree -> [Seq TestName]
@@ -1665,9 +1691,9 @@ testNameSeqs = foldTestTree trivialFold
 #endif
   }
 
-testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, [IM.Key])]
+testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, Unique IM.Key)]
 testNamesAndDeps im = foldTestTree trivialFold
-  { foldSingle = const $ const . (: []) . (, [])
+  { foldSingle = const $ const . (: []) . (, mempty)
 #if MIN_VERSION_tasty(1,4,0)
   , foldGroup  = const $ map . first . (++) . (++ ".")
   , foldAfter  = const foldDeps
@@ -1680,13 +1706,14 @@ testNamesAndDeps im = foldTestTree trivialFold
   }
 #if MIN_VERSION_tasty(1,2,0)
   where
+    foldDeps :: DependencyType -> Expr -> [(a, Unique IM.Key)] -> [(a, Unique IM.Key)]
     foldDeps AllSucceed (And (StringLit "tasty-bench") p) =
-      map $ second $ (++) $ findMatchingKeys im p
+      map $ second $ mappend $ findMatchingKeys im p
     foldDeps _ _ = id
 
-findMatchingKeys :: IntMap (Seq TestName) -> Expr -> [IM.Key]
+findMatchingKeys :: IntMap (Seq TestName) -> Expr -> Unique IM.Key
 findMatchingKeys im pattern =
-  foldr (\(k, v) -> if withFields v pat == Right True then (k :) else id) [] $ IM.assocs im
+  foldMap (\(k, v) -> if withFields v pat == Right True then Unique k else mempty) $ IM.assocs im
   where
     pat = eval pattern >>= asB
 #endif
