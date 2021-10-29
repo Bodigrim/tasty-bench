@@ -589,6 +589,7 @@ Here is an example:
 
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -604,6 +605,7 @@ module Test.Tasty.Bench
   , bgroup
 #if MIN_VERSION_tasty(1,2,0)
   , bcompare
+  , bcompareWithin
 #endif
   , env
   , envWithCleanup
@@ -1051,9 +1053,20 @@ bgroup = testGroup
 -- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
 --
 bcompare :: String -> Benchmark -> Benchmark
-bcompare s = case parseExpr s of
+bcompare = bcompareWithin (-1/0) (1/0)
+
+-- | Same as 'bcompare', but takes expected lower and upper bounds of
+-- comparison. If the result is not within provided bounds, benchmark is failed.
+-- This allows to create portable performance tests: instead of comparing
+-- to an absolute timeout or to previous runs, you can state that one implementation
+-- of an algorithm must be faster than another.
+bcompareWithin :: Double -> Double -> String -> Benchmark -> Benchmark
+bcompareWithin lo hi s = case parseExpr s of
   Nothing -> error $ "Could not parse bcompare pattern " ++ s
-  Just e  -> after_ AllSucceed (And (StringLit "tasty-bench") e)
+  Just e  -> after_ AllSucceed (And (StringLit (bcomparePrefix ++ show (lo, hi))) e)
+
+bcomparePrefix :: String
+bcomparePrefix = "tasty-bench"
 #endif
 
 -- | Benchmarks are actually just a regular 'Test.Tasty.TestTree' in disguise.
@@ -1595,17 +1608,23 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
     Nothing -> pure S.empty
     Just (BaselinePath path) -> S.fromList . joinQuotedFields . lines <$> (readFile path >>= evaluate . force)
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
-  pure $ \name depR r -> case safeRead (resultDescription r) of
+  pure $ \name mDepR r -> case safeRead (resultDescription r) of
     Nothing  -> r
     Just (WithLoHi est lowerBound upperBound) ->
       (if isAcceptable then id else forceFail)
-      r { resultDescription = pretty est ++ bcomp ++ formatSlowDown slowDown }
+      r { resultDescription = pretty est ++ bcompareMsg ++ formatSlowDown slowDown }
       where
+        isAcceptable = isAcceptableVsBaseline && isAcceptableVsBcompare
         slowDown = compareVsBaseline baseline name est
-        isAcceptable = slowDown >= lowerBound && slowDown <= upperBound
-        bcomp = case depR >>= safeRead . resultDescription of
-          Nothing -> ""
-          Just (WithLoHi depEst _ _) -> printf ", %.2fx" (estTime est / estTime depEst)
+        isAcceptableVsBaseline = slowDown >= lowerBound && slowDown <= upperBound
+        (isAcceptableVsBcompare, bcompareMsg) = case mDepR of
+          Nothing -> (True, "")
+          Just (WithLoHi depR depLowerBound depUpperBound) -> case safeRead (resultDescription depR) of
+            Nothing -> (True, "")
+            Just (WithLoHi depEst _ _) -> let ratio = estTime est / estTime depEst in
+              ( ratio >= depLowerBound && ratio <= depUpperBound
+              , printf ", %.2fx" ratio
+              )
 
 -- | A well-formed CSV entry contains an even number of quotes: 0, 2 or more.
 joinQuotedFields :: [String] -> [String]
@@ -1661,6 +1680,7 @@ forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
 
 data Unique a = None | Unique !a | NotUnique
+  deriving (Functor)
 
 appendUnique :: Unique a -> Unique a -> Unique a
 appendUnique None a = a
@@ -1682,7 +1702,7 @@ instance Monoid (Unique a) where
 
 modifyConsoleReporter
     :: [OptionDescription]
-    -> (OptionSet -> IO (TestName -> Maybe Result -> Result -> Result))
+    -> (OptionSet -> IO (TestName -> Maybe (WithLoHi Result) -> Result -> Result))
     -> Ingredient
 modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
   let nameSeqs     = IM.fromDistinctAscList $ zip [0..] $ testNameSeqs opts tree
@@ -1709,7 +1729,7 @@ testNameSeqs = foldTestTree trivialFold
 #endif
   }
 
-testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, Unique IM.Key)]
+testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, Unique (WithLoHi IM.Key))]
 testNamesAndDeps im = foldTestTree trivialFold
   { foldSingle = const $ const . (: []) . (, mempty)
 #if MIN_VERSION_tasty(1,4,0)
@@ -1724,9 +1744,11 @@ testNamesAndDeps im = foldTestTree trivialFold
   }
 #if MIN_VERSION_tasty(1,2,0)
   where
-    foldDeps :: DependencyType -> Expr -> [(a, Unique IM.Key)] -> [(a, Unique IM.Key)]
-    foldDeps AllSucceed (And (StringLit "tasty-bench") p) =
-      map $ second $ mappend $ findMatchingKeys im p
+    foldDeps :: DependencyType -> Expr -> [(a, Unique (WithLoHi IM.Key))] -> [(a, Unique (WithLoHi IM.Key))]
+    foldDeps AllSucceed (And (StringLit xs) p)
+      | bcomparePrefix `isPrefixOf` xs
+      , Just (lo :: Double, hi :: Double) <- safeRead $ drop (length bcomparePrefix) xs
+      = map $ second $ mappend $ (\x -> WithLoHi x lo hi) <$> findMatchingKeys im p
     foldDeps _ _ = id
 
 findMatchingKeys :: IntMap (Seq TestName) -> Expr -> Unique IM.Key
@@ -1737,8 +1759,8 @@ findMatchingKeys im pattern =
 #endif
 
 postprocessResult
-    :: (TestName -> Maybe Result -> Result -> Result)
-    -> IntMap (TestName, Maybe IM.Key, TVar Status)
+    :: (TestName -> Maybe (WithLoHi Result) -> Result -> Result)
+    -> IntMap (TestName, Maybe (WithLoHi IM.Key), TVar Status)
     -> IO StatusMap
 postprocessResult f src = do
   paired <- forM src $ \(name, mDepId, tv) -> (name, mDepId, tv,) <$> newTVarIO NotStarted
@@ -1753,13 +1775,15 @@ postprocessResult f src = do
                 case new of
                   Done res -> do
 
-                    depRes <- case mDepId >>= (`IM.lookup` src) of
+                    depRes <- case mDepId of
                       Nothing -> pure Nothing
-                      Just (_, _, depTV) -> do
-                        depStatus <- readTVar depTV
-                        case depStatus of
-                          Done dep -> pure $ Just dep
-                          _ -> pure Nothing
+                      Just (WithLoHi depId lo hi) -> case IM.lookup depId src of
+                        Nothing -> pure Nothing
+                        Just (_, _, depTV) -> do
+                          depStatus <- readTVar depTV
+                          case depStatus of
+                            Done dep -> pure $ Just (WithLoHi dep lo hi)
+                            _ -> pure Nothing
 
                     writeTVar oldTV (Done (f name depRes res))
                     pure (Any True, All True)
