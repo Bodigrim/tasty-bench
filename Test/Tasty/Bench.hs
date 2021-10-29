@@ -417,7 +417,7 @@ also using @--hide-successes@ to show only problematic benchmarks, or
 even [@tasty-rerun@](http://hackage.haskell.org/package/tasty-rerun)
 package to focus on rerunning failing items only.
 
-If you wish to compare two CSV reports non-interactively, here is a handy `awk` incantation:
+If you wish to compare two CSV reports non-interactively, here is a handy @awk@ incantation:
 
 > awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 
@@ -480,6 +480,21 @@ built-in quick-and-dirty SVG plotting feature, which can be invoked by
 passing @--svg@ @FILE@. Here is a sample of its output:
 
 ![Plotting](example.svg)
+
+=== Build flags
+
+Build flags are a brittle subject and users do not normally need to touch them.
+
+* If you find yourself in an environment, where @tasty@ is not available and you
+  have access to boot packages only, you can still use @tasty-bench@! Just copy
+  @Test\/Tasty\/Bench.hs@ to your project (imagine it like a header-only C library).
+  It will provide you with functions to build 'Benchmarkable' and run them manually
+  via 'measureCpuTime'. This mode of operation can be also configured
+  by disabling Cabal flag @tasty@.
+
+* If results are amiss or oscillate wildly and adjusting @--timeout@ and @--stdev@
+  does not help, you may be interested to investigate individual timings of
+  successive runs by enabling Cabal flag @debug@. This will pipe raw data into @stderr@.
 
 === Command-line options
 
