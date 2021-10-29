@@ -857,11 +857,12 @@ data Estimate = Estimate
   } deriving (Show, Read)
 
 #ifdef MIN_VERSION_tasty
-data Response = Response
-  { respEstimate :: !Estimate
-  , respIfSlower :: !FailIfSlower -- ^ saved value of --fail-if-slower
-  , respIfFaster :: !FailIfFaster -- ^ saved value of --fail-if-faster
-  } deriving (Show, Read)
+
+data WithLoHi a = WithLoHi
+  !a      -- payload
+  !Double -- lower bound (e. g., 0.9 for -10% speedup)
+  !Double -- upper bound (e. g., 1.2 for +20% slowdown)
+  deriving (Show, Read)
 
 prettyEstimate :: Estimate -> String
 prettyEstimate (Estimate m stdev) =
@@ -1011,7 +1012,9 @@ instance IsTest Benchmarkable where
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
       est <- measureUntil True (lookupOption opts) (lookupOption opts) b
-      pure $ testPassed $ show (Response est (lookupOption opts) (lookupOption opts))
+      let FailIfSlower ifSlower = lookupOption opts
+          FailIfFaster ifFaster = lookupOption opts
+      pure $ testPassed $ show (WithLoHi est (1 - ifFaster) (1 + ifSlower))
     _ -> pure $ testFailed "Benchmarks must not be run concurrently. Please pass -j1 and/or avoid +RTS -N."
 
 -- | Attach a name to 'Benchmarkable'.
@@ -1418,7 +1421,7 @@ csvOutput h = traverse_ $ \(name, tv) -> do
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
   case safeRead (resultDescription r) of
     Nothing -> pure ()
-    Just (Response est _ _) -> do
+    Just (WithLoHi est _ _) -> do
       msg <- formatMessage $ csv est
       hPutStrLn h (encodeCsv name ++ ',' : msg)
 
@@ -1476,7 +1479,7 @@ svgCollect ref = traverse_ $ \(name, tv) -> do
   r <- atomically $ readTVar tv >>= \s -> case s of Done r -> pure r; _ -> retry
   case safeRead (resultDescription r) of
     Nothing -> pure ()
-    Just (Response est _ _) -> modifyIORef ref ((name, est) :)
+    Just (WithLoHi est _ _) -> modifyIORef ref ((name, est) :)
 
 svgRender :: [(TestName, Estimate)] -> String
 svgRender [] = ""
@@ -1594,17 +1597,15 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
   let pretty = if hasGCStats then prettyEstimateWithGC else prettyEstimate
   pure $ \name depR r -> case safeRead (resultDescription r) of
     Nothing  -> r
-    Just (Response est (FailIfSlower ifSlow) (FailIfFaster ifFast)) ->
+    Just (WithLoHi est lowerBound upperBound) ->
       (if isAcceptable then id else forceFail)
       r { resultDescription = pretty est ++ bcomp ++ formatSlowDown slowDown }
       where
         slowDown = compareVsBaseline baseline name est
-        isAcceptable -- ifSlow/ifFast may be infinite, so we cannot 'truncate'
-          =  int64ToDouble slowDown <=  100 * ifSlow
-          && int64ToDouble slowDown >= -100 * ifFast
+        isAcceptable = slowDown >= lowerBound && slowDown <= upperBound
         bcomp = case depR >>= safeRead . resultDescription of
           Nothing -> ""
-          Just (Response depEst _ _) -> printf ", %.2fx" (estTime est / estTime depEst)
+          Just (WithLoHi depEst _ _) -> printf ", %.2fx" (estTime est / estTime depEst)
 
 -- | A well-formed CSV entry contains an even number of quotes: 0, 2 or more.
 joinQuotedFields :: [String] -> [String]
@@ -1620,14 +1621,13 @@ joinQuotedFields (x : xs)
 estTime :: Estimate -> Double
 estTime = word64ToDouble . measTime . estMean
 
--- | Return slow down in percents.
-compareVsBaseline :: S.Set String -> TestName -> Estimate -> Int64
+compareVsBaseline :: S.Set String -> TestName -> Estimate -> Double
 compareVsBaseline baseline name (Estimate m stdev) = case mOld of
-  Nothing -> 0
+  Nothing -> 1
   Just (oldTime, oldDoubleSigma)
     -- time and oldTime must be signed integers to use 'abs'
-    | abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma -> 0
-    | otherwise -> 100 * (time - oldTime) `quot` oldTime
+    | abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma -> 1
+    | otherwise -> int64ToDouble time / int64ToDouble oldTime
   where
     time = word64ToInt64 $ measTime m
 
@@ -1648,11 +1648,14 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
       let doubleSigmaCell = takeWhile (/= ',') rest
       (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
 
-formatSlowDown :: Int64 -> String
-formatSlowDown n = case n `compare` 0 of
-  LT -> printf ", %2i%% faster than baseline" (-n)
+formatSlowDown :: Double -> String
+formatSlowDown n = case m `compare` 0 of
+  LT -> printf ", %2i%% faster than baseline" (-m)
   EQ -> ""
-  GT -> printf ", %2i%% slower than baseline" n
+  GT -> printf ", %2i%% slower than baseline" m
+  where
+    m :: Int64
+    m = truncate ((n - 1) * 100)
 
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
