@@ -1,3 +1,8 @@
+# 0.3.1
+
+* Add `bcompareWithin` for portable performance tests.
+* Add `tasty` and `debug` build flags.
+
 # 0.3
 
 * Report mean time with 3 significant digits.
