@@ -539,6 +539,12 @@ bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
 is a more robust choice of
 an [`awk` pattern](https://github.com/UnkindPartition/tasty#patterns) here.
 
+One can leverage comparisons between benchmarks to implement portable performance
+tests, expressing properties like "this algorithm must be at least twice faster
+than that one" or "this operation should not be more than thrice slower than that".
+This can be achieved with `bcompareWithin`, which takes an acceptable interval
+of performance as an argument.
+
 ## Plotting results
 
 Users can dump results into CSV with `--csv FILE`

@@ -472,6 +472,12 @@ Locating a baseline benchmark in larger suites could get tricky;
 is a more robust choice of
 an <https://github.com/UnkindPartition/tasty#patterns awk pattern> here.
 
+One can leverage comparisons between benchmarks to implement portable performance
+tests, expressing properties like "this algorithm must be at least twice faster
+than that one" or "this operation should not be more than thrice slower than that".
+This can be achieved with 'bcompareWithin', which takes an acceptable interval
+of performance as an argument.
+
 === Plotting results
 
 Users can dump results into CSV with @--csv@ @FILE@ and plot them using
@@ -1039,20 +1045,21 @@ bgroup = testGroup
 #if MIN_VERSION_tasty(1,2,0)
 -- | Compare benchmarks, reporting relative speed up or slow down.
 --
--- The first argument is a @tasty@ pattern, which must unambiguously
--- match a unique baseline benchmark. Locating a benchmark in a global environment
--- may be tricky, please refer to
--- [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
---
--- A benchmark (or a group of benchmarks), specified in the second argument,
--- will be compared against the baseline benchmark by dividing measured mean times.
--- The result is reported by 'consoleBenchReporter', e. g., 0.50x or 1.25x.
---
 -- This function is a vague reminiscence of @bcompare@, which existed in pre-1.0
 -- versions of @criterion@, but their types are incompatible. Under the hood
 -- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
 --
-bcompare :: String -> Benchmark -> Benchmark
+bcompare
+  :: String
+  -- ^ @tasty@ pattern, which must unambiguously
+  -- match a unique baseline benchmark. Locating a benchmark in a global environment
+  -- may be tricky, please refer to
+  -- [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
+  -> Benchmark
+  -- ^ Benchmark (or a group of benchmarks)
+  -- to be compared against the baseline benchmark by dividing measured mean times.
+  -- The result is reported by 'consoleBenchReporter', e. g., 0.50x or 1.25x.
+  -> Benchmark
 bcompare = bcompareWithin (-1/0) (1/0)
 
 -- | Same as 'bcompare', but takes expected lower and upper bounds of
@@ -1060,7 +1067,16 @@ bcompare = bcompareWithin (-1/0) (1/0)
 -- This allows to create portable performance tests: instead of comparing
 -- to an absolute timeout or to previous runs, you can state that one implementation
 -- of an algorithm must be faster than another.
-bcompareWithin :: Double -> Double -> String -> Benchmark -> Benchmark
+--
+-- E. g., 'bcompareWithin' 2.0 3.0 passes only if a benchmark is at least 2x
+-- and at most 3x slower than a baseline.
+--
+bcompareWithin
+  :: Double    -- ^ Lower bound of relative speed up.
+  -> Double    -- ^ Upper bound of relative spped up.
+  -> String    -- ^ @tasty@ pattern to locate a baseline benchmark.
+  -> Benchmark -- ^ Benchmark to compare against baseline.
+  -> Benchmark
 bcompareWithin lo hi s = case parseExpr s of
   Nothing -> error $ "Could not parse bcompare pattern " ++ s
   Just e  -> after_ AllSucceed (And (StringLit (bcomparePrefix ++ show (lo, hi))) e)
