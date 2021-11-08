@@ -1,11 +1,27 @@
 kind: pipeline
+name: arm
+platform: { os: linux, arch: arm }
+steps:
+- name: Build
+  image: elmanhasa/haskell-base
+  commands:
+    - export LC_ALL=C.UTF-8
+    - uname -a # check platform
+    - getconf LONG_BIT # check bitness
+    - cabal --version
+    - cabal update
+    - cabal new-build
+---
+kind: pipeline
 name: arm64
 platform: { os: linux, arch: arm64 }
 steps:
-- name: Test
+- name: Build
   image: buildpack-deps:focal
   commands:
     - export LC_ALL=C.UTF-8
+    - uname -a # check platform
+    - getconf LONG_BIT # check bitness
     - apt-get update -y
     - apt-get install -y ghc cabal-install
     - cabal --version
@@ -16,10 +32,12 @@ kind: pipeline
 name: i386
 platform: { os: linux, arch: amd64 }
 steps:
-- name: Test
+- name: Build
   image: i386/ubuntu
   commands:
     - export LC_ALL=C.UTF-8
+    - uname -a # check platform
+    - getconf LONG_BIT # check bitness
     - apt-get update -y
     - apt-get install -y ghc cabal-install
     - cabal --version # 1.24
