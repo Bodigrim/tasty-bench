@@ -22,6 +22,11 @@ Compare this to @criterion@ (10+ modules, 50+ dependencies) and @gauge@
 faster than @criterion@ and up to 4x faster than @gauge@. A build without dependencies
 is up to 6x faster than @criterion@ and up to 8x faster than @gauge@.
 
+@tasty-bench@ is a native Haskell library and works everywhere, where GHC
+does. We support a full range of architectures (@i386@, @amd64@, @armhf@,
+@arm64@, @ppc64le@, @s390x@) and operating systems (Linux, Windows, MacOS,
+FreeBSD), plus any GHC from 7.0 to 9.2.
+
 === How is it possible?
 
 Our benchmarks are literally regular @tasty@ tests, so we can leverage
@@ -69,10 +74,7 @@ Benchmarks are declared in a separate section of @cabal@ file:
 >   main-is:       BenchFibo.hs
 >   type:          exitcode-stdio-1.0
 >   build-depends: base, tasty-bench
->   if impl(ghc >= 8.10)
->     ghc-options:  "-with-rtsopts=-A32m --nonmoving-gc"
->   else
->     ghc-options:  "-with-rtsopts=-A32m"
+>   ghc-options:  "-with-rtsopts=-A32m"
 
 And here is @BenchFibo.hs@:
 
@@ -112,48 +114,18 @@ the following output:
 > All 3 tests passed (7.25s)
 
 The output says that, for instance, the first benchmark was repeatedly
-executed for 2.13 seconds (wall time), its mean CPU time was 63 nanoseconds
-and, assuming ideal precision of a system clock, execution time does not
-often diverge from the mean further than ±3.4 nanoseconds (double
-standard deviation, which for normal distributions corresponds to
-<https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule 95%>
-probability). Take standard deviation numbers with a grain of salt;
-there are lies, damned lies, and statistics.
-
-Note that this data is not directly comparable with @criterion@ output:
-
-> benchmarking fibonacci numbers/fifth
-> time                 62.78 ns   (61.99 ns .. 63.41 ns)
->                      0.999 R²   (0.999 R² .. 1.000 R²)
-> mean                 62.39 ns   (61.93 ns .. 62.94 ns)
-> std dev              1.753 ns   (1.427 ns .. 2.258 ns)
-
-One might interpret the second line as saying that 95% of measurements
-fell into 61.99–63.41 ns interval, but this is wrong. It states that the
-<https://en.wikipedia.org/wiki/Ordinary_least_squares OLS regression>
-(which is not exactly the mean time) of wall execution time is most probably
-somewhere between 61.99 ns and 63.41 ns, but does not say a thing about
-individual measurements. To understand how far away a typical
-measurement deviates you need to add\/subtract double standard deviation
-yourself (which gives 62.78 ns ± 3.506 ns, similar to @tasty-bench@
-above).
-
-To add to the confusion, @gauge@ in @--small@ mode outputs not the
-second line of @criterion@ report as one might expect, but a mean value
-from the penultimate line and a standard deviation:
-
-> fibonacci numbers/fifth                  mean 62.39 ns  ( +- 1.753 ns  )
-
-The interval ±1.753 ns answers for
-<https://en.wikipedia.org/wiki/68%E2%80%9395%E2%80%9399.7_rule 68%> of
-samples only, double it to estimate the behavior in 95% of cases.
+executed for 2.13 seconds (wall time), its predicted mean CPU time was
+63 nanoseconds and means of individual samples do not often diverge from it
+further than ±3.4 nanoseconds (double standard deviation). Take standard
+deviation numbers with a grain of salt; there are lies, damned lies, and
+statistics.
 
 === Wall-clock time vs. CPU time
 
 What time are we talking about?
 Both @criterion@ and @gauge@ by default report wall-clock time, which is
 affected by any other application which runs concurrently.
-While ideally benchmarks are executed on a dedicated server without any other load,
+Ideally benchmarks are executed on a dedicated server without any other load,
 but — let's face the truth — most of developers run benchmarks
 on a laptop with a hundred other services and a window manager, and
 watch videos while waiting for benchmarks to finish. That's the cause
@@ -191,13 +163,14 @@ affect overall result. This is in contrast to @criterion@, which fits
 all measurements and is biased to use more data points corresponding to
 shorter runs (it employs \( n \leftarrow 1.05n \) progression).
 
-An alert reader could object that we measure standard deviation for
-samples with \( n \) and \( 2n \) iterations, but report it scaled to a single
-iteration. Strictly speaking, this is justified only if we assume that
-deviating factors are either roughly periodic (e. g., coarseness of a
-system clock, garbage collection) or are likely to affect several
-successive iterations in the same way (e. g., slow down by another
-concurrent process).
+Mean time and its deviation does not say much about the
+distribution of individual timings. E. g., imagine a computation which
+(according to a coarse system timer) takes either 0 ms or 1 ms with equal
+probability. While one would be able to establish that its mean time is 0.5 ms
+with a very small deviation, this does not imply that individual measurements
+are anywhere near 0.5 ms. Even assuming an infinite precision of a system
+timer, the distribution of individual times is not known to be
+<https://en.wikipedia.org/wiki/Normal_distribution normal>.
 
 Obligatory disclaimer: statistics is a tricky matter, there is no
 one-size-fits-all approach. In the absence of a good theory simplistic
