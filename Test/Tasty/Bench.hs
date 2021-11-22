@@ -1369,7 +1369,7 @@ envWithCleanup res fin f = withResource
 --   let opts' = changeOption (Just . fromMaybe (CsvPath "foo.csv")) opts
 --   case tryIngredients benchIngredients opts' benchmarks of
 --     Nothing -> exitFailure
---     Just mb -> mb >>= \b -> if b then exitSuccess else exitFailure
+--     Just mb -> mb >>= \\b -> if b then exitSuccess else exitFailure
 -- @
 --
 newtype CsvPath = CsvPath FilePath
