@@ -440,6 +440,25 @@ If you wish to compare two CSV reports non-interactively, here is a handy `awk` 
 awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 ```
 
+Here is a larger snippet to compare two `git` commits:
+
+```sh
+#!/usr/sh
+compareBenches () {
+  # compareBenches oldCommit newCommit <other arguments are passed to benchmarks directly>
+  OLD="$1"
+  shift
+  NEW="$1"
+  shift
+  git checkout "$OLD"
+  cabal run benchmarks -- --csv "$OLD".csv "$@"
+  git checkout "$NEW"
+  cabal run benchmarks -- --baseline "$OLD".csv --csv "$NEW".csv "$@"
+  git checkout "@{-2}"
+  awk 'BEGIN{FS=",";OFS=",";print "Name,'"$OLD"','"$NEW"',Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' "$OLD".csv "$NEW".csv > "$OLD"-vs-"$NEW".csv
+}
+```
+
 Note that columns in CSV report are different from what `criterion` or `gauge`
 would produce. If names do not contain commas, missing columns can be faked this way:
 
