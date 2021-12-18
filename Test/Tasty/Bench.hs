@@ -783,7 +783,8 @@ parsePositivePercents xs = do
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
 -- 'nfAppIO', 'whnfAppIO' below.
 --
--- Drop-in replacement for 'Criterion.Benchmarkable' and 'Gauge.Benchmarkable'.
+-- Drop-in replacement for @Criterion.@'Criterion.Benchmarkable' and
+-- @Gauge.@'Gauge.Benchmarkable'.
 --
 newtype Benchmarkable = Benchmarkable
   { unBenchmarkable :: Word64 -> IO () -- ^ Run benchmark given number of times.
@@ -1016,17 +1017,18 @@ instance IsTest Benchmarkable where
 
 -- | Attach a name to 'Benchmarkable'.
 --
--- This is actually a synonym of 'Test.Tasty.Providers.singleTest'
--- to provide an interface compatible with 'Criterion.bench' and 'Gauge.bench'.
+-- This is actually a synonym of 'Test.Tasty.Providers.singleTest' to
+-- provide an interface compatible with @Criterion.@'Criterion.bench'
+-- and @Gauge.@'Gauge.bench'.
 --
 bench :: String -> Benchmarkable -> Benchmark
 bench = singleTest
 
 -- | Attach a name to a group of 'Benchmark'.
 --
--- This is actually a synonym of 'Test.Tasty.testGroup'
--- to provide an interface compatible with 'Criterion.bgroup'
--- and 'Gauge.bgroup'.
+-- This is actually a synonym of 'Test.Tasty.testGroup' to provide an
+-- interface compatible with @Criterion.@'Criterion.bgroup' and
+-- @Gauge@.'Gauge.bgroup'.
 --
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup = testGroup
@@ -1076,13 +1078,14 @@ bcomparePrefix = "tasty-bench"
 
 -- | Benchmarks are actually just a regular 'Test.Tasty.TestTree' in disguise.
 --
--- This is a drop-in replacement for 'Criterion.Benchmark' and 'Gauge.Benchmark'.
+-- This is a drop-in replacement for @Criterion.@'Criterion.Benchmark'
+-- and @Gauge.@'Gauge.Benchmark'.
 --
 type Benchmark = TestTree
 
--- | Run benchmarks and report results, providing
--- an interface compatible with 'Criterion.defaultMain'
--- and 'Gauge.defaultMain'.
+-- | Run benchmarks and report results, providing an interface
+-- compatible with @Criterion.@'Criterion.defaultMain' and
+-- @Gauge.@'Gauge.defaultMain'.
 --
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
@@ -1141,7 +1144,8 @@ funcToBench frc = (Benchmarkable .) . go
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
 --
--- Drop-in replacement for 'Criterion.nf' and 'Gauge.nf'.
+-- Drop-in replacement for @Criterion.@'Criterion.nf' and
+-- @Gauge.@'Gauge.nf'.
 --
 nf :: NFData b => (a -> b) -> a -> Benchmarkable
 nf = funcToBench force
@@ -1170,7 +1174,7 @@ nf = funcToBench force
 -- This will succeed in a matter of nanoseconds, because weak head
 -- normal form forces only the first element of the list.
 --
--- Drop-in replacement for 'Criterion.whnf' and 'Gauge.whnf'.
+-- Drop-in replacement for @Criterion.@'Criterion.whnf' and @Gauge.@'Gauge.whnf'.
 --
 whnf :: (a -> b) -> a -> Benchmarkable
 whnf = funcToBench id
@@ -1205,7 +1209,7 @@ ioToBench frc act = Benchmarkable go
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for 'Criterion.nfIO' and 'Gauge.nfIO'.
+-- Drop-in replacement for @Criterion.@'Criterion.nfIO' and @Gauge.@'Gauge.nfIO'.
 --
 nfIO :: NFData a => IO a -> Benchmarkable
 nfIO = ioToBench force
@@ -1229,7 +1233,7 @@ nfIO = ioToBench force
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for 'Criterion.whnfIO' and 'Gauge.whnfIO'.
+-- Drop-in replacement for @Criterion.@'Criterion.whnfIO' and @Gauge.@'Gauge.whnfIO'.
 --
 whnfIO :: IO a -> Benchmarkable
 whnfIO = ioToBench id
@@ -1269,7 +1273,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for 'Criterion.nfAppIO' and 'Gauge.nfAppIO'.
+-- Drop-in replacement for @Criterion.@'Criterion.nfAppIO' and @Gauge.@'Gauge.nfAppIO'.
 --
 nfAppIO :: NFData b => (a -> IO b) -> a -> Benchmarkable
 nfAppIO = ioFuncToBench force
@@ -1298,7 +1302,7 @@ nfAppIO = ioFuncToBench force
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for 'Criterion.whnfAppIO' and 'Gauge.whnfAppIO'.
+-- Drop-in replacement for @Criterion.@'Criterion.whnfAppIO' and @Gauge.@'Gauge.whnfAppIO'.
 --
 whnfAppIO :: (a -> IO b) -> a -> Benchmarkable
 whnfAppIO = ioFuncToBench id
@@ -1336,8 +1340,10 @@ whnfAppIO = ioFuncToBench id
 -- >   [ env (evaluate (force (replicate 1000000 'a'))) $ \largeData ->
 -- >     bench "large" $ nf length largeData, ... ]
 --
--- 'env' is provided only for the sake of compatibility with 'Criterion.env' and 'Gauge.env',
--- and involves 'unsafePerformIO'. Consider using 'withResource' instead.
+-- @Test.Tasty.Bench.@'env' is provided only for the sake of
+-- compatibility with @Criterion.@'Criterion.env' and
+-- @Gauge.@'Gauge.env', and involves 'unsafePerformIO'. Consider using
+-- 'withResource' instead.
 --
 -- 'defaultMain' requires that the hierarchy of benchmarks and their names is
 -- independent of underlying 'IO' actions. While executing 'IO' inside 'bench'
@@ -1353,9 +1359,10 @@ env res = envWithCleanup res (const $ pure ())
 -- | Similar to 'env', but includes an additional argument
 -- to clean up created environment.
 --
--- Provided only for the sake of compatibility
--- with 'Criterion.envWithCleanup' and 'Gauge.envWithCleanup',
--- and involves 'unsafePerformIO'. Consider using 'withResource' instead.
+-- Provided only for the sake of compatibility with
+-- @Criterion.@'Criterion.envWithCleanup' and
+-- @Gauge.@'Gauge.envWithCleanup', and involves
+-- 'unsafePerformIO'. Consider using 'withResource' instead.
 --
 envWithCleanup :: NFData env => IO env -> (env -> IO a) -> (env -> Benchmark) -> Benchmark
 envWithCleanup res fin f = withResource
