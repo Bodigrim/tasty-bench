@@ -140,6 +140,8 @@ is your burden), but is a bit more stable.
 Caveat: this means that for multithreaded algorithms
 @tasty-bench@ reports total elapsed CPU time across all cores, while
 @criterion@ and @gauge@ print maximum of core's wall-clock time.
+It also means that @tasty-bench@ cannot measure time spent out of process,
+e. g., calls to other executables.
 
 === Statistical model
 
