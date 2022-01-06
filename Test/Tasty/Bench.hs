@@ -794,14 +794,32 @@ newtype Benchmarkable = Benchmarkable
 
 #ifdef MIN_VERSION_tasty
 
+-- | 'defaultMain' forces 'setLocaleEncoding' to 'utf8', but users might
+-- be running benchmarks outside of it (e. g., via 'defaultMainWithIngredients').
+supportsUnicode :: Bool
+#if MIN_VERSION_base(4,5,0)
+supportsUnicode = take 3 (textEncodingName enc) == "UTF"
+  where
+    enc = unsafePerformIO getLocaleEncoding
+#else
+supportsUnicode = False
+#endif
+{-# NOINLINE supportsUnicode #-}
+
+mu :: Char
+mu = if supportsUnicode then 'μ' else 'u'
+
+pm :: String
+pm = if supportsUnicode then " ± " else " +-"
+
 -- | Show picoseconds, fitting number in 3 characters.
 showPicos3 :: Word64 -> String
 showPicos3 i
   | t < 995   = printf "%3.0f ps" t
   | t < 995e1 = printf "%3.1f ns" (t / 1e3)
   | t < 995e3 = printf "%3.0f ns" (t / 1e3)
-  | t < 995e4 = printf "%3.1f μs" (t / 1e6)
-  | t < 995e6 = printf "%3.0f μs" (t / 1e6)
+  | t < 995e4 = printf "%3.1f %cs" (t / 1e6) mu
+  | t < 995e6 = printf "%3.0f %cs" (t / 1e6) mu
   | t < 995e7 = printf "%3.1f ms" (t / 1e9)
   | t < 995e9 = printf "%3.0f ms" (t / 1e9)
   | otherwise = printf "%4.2f s"  (t / 1e12)
@@ -815,9 +833,9 @@ showPicos4 i
   | t < 995e1 = printf "%4.2f ns"  (t / 1e3)
   | t < 995e2 = printf "%4.1f ns"  (t / 1e3)
   | t < 995e3 = printf "%3.0f  ns" (t / 1e3)
-  | t < 995e4 = printf "%4.2f μs"  (t / 1e6)
-  | t < 995e5 = printf "%4.1f μs"  (t / 1e6)
-  | t < 995e6 = printf "%3.0f  μs" (t / 1e6)
+  | t < 995e4 = printf "%4.2f %cs"  (t / 1e6) mu
+  | t < 995e5 = printf "%4.1f %cs"  (t / 1e6) mu
+  | t < 995e6 = printf "%3.0f  %cs" (t / 1e6) mu
   | t < 995e7 = printf "%4.2f ms"  (t / 1e9)
   | t < 995e8 = printf "%4.1f ms"  (t / 1e9)
   | t < 995e9 = printf "%3.0f  ms" (t / 1e9)
@@ -867,12 +885,12 @@ data WithLoHi a = WithLoHi
 prettyEstimate :: Estimate -> String
 prettyEstimate (Estimate m stdev) =
   showPicos4 (measTime m)
-  ++ (if stdev == 0 then "         " else " ± " ++ showPicos3 (2 * stdev))
+  ++ (if stdev == 0 then "         " else pm ++ showPicos3 (2 * stdev))
 
 prettyEstimateWithGC :: Estimate -> String
 prettyEstimateWithGC (Estimate m stdev) =
   showPicos4 (measTime m)
-  ++ (if stdev == 0 then ",          " else " ± " ++ showPicos3 (2 * stdev) ++ ", ")
+  ++ (if stdev == 0 then ",          " else pm ++ showPicos3 (2 * stdev) ++ ", ")
   ++ showBytes (measAllocs m) ++ " allocated, "
   ++ showBytes (measCopied m) ++ " copied, "
   ++ showBytes (measMaxMem m) ++ " peak memory"
