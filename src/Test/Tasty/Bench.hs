@@ -1122,13 +1122,27 @@ benchIngredients = [listingTests, composeReporters consoleBenchReporter (compose
 #endif
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
-funcToBench frc = (Benchmarkable .) . go
+funcToBench frc = \f x -> Benchmarkable (benchloop f x)
   where
-    go f x n
+    -- Here we rely on the fact that GHC is not smart enough:
+    -- it doesn't notice that f and x arguments are loop invariant
+    -- and could be floated, and the whole (f x) expression shared.
+    --
+    -- (if we create closure with f and x bound in the environment,
+    --  then GHC is smart enough to share computation of (f x))
+    --
+    -- Criterion marks similar function as NOINLINE.
+    -- If we mark benchloop NOINLINE then benchmark results are slightly larger
+    -- (noticeable in bench-fibo) as the loop body is (slightly) bigger,
+    -- as GHC doesn't unbox&inline numbers, nor Eq @Word64 dictionary.
+    --
+    -- This function is called "benchloop", and not e.g. "go"
+    -- so it is easier to spot in Core dumps.
+    benchloop f x n
       | n == 0    = pure ()
       | otherwise = do
         _ <- evaluate (frc (f x))
-        go f x (n - 1)
+        benchloop f x (n - 1)
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
