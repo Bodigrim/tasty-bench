@@ -271,6 +271,10 @@ another way to speed up generation of Fibonacci numbers.
     For GHC ≥ 8.10 consider switching benchmarks to a non-moving garbage collector,
     because it decreases GC pauses and corresponding noise: @+RTS@ @--nonmoving-gc@.
 
+-   Never compile benchmarks with @-fstatic-argument-transformation@, because it
+    breaks a trick we use to force GHC into reevaluation of the same function application
+    over and over again.
+
 -   If benchmark results look malformed like below, make sure that you
     are invoking 'Test.Tasty.Bench.defaultMain' and not
     'Test.Tasty.defaultMain' (the difference is 'consoleBenchReporter'
@@ -1122,27 +1126,28 @@ benchIngredients = [listingTests, composeReporters consoleBenchReporter (compose
 #endif
 
 funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
-funcToBench frc = \f x -> Benchmarkable (benchloop f x)
+funcToBench frc = (Benchmarkable .) . benchLoop
   where
-    -- Here we rely on the fact that GHC is not smart enough:
-    -- it doesn't notice that f and x arguments are loop invariant
-    -- and could be floated, and the whole (f x) expression shared.
+    -- Here we rely on the fact that GHC (unless spurred by
+    -- -fstatic-argument-transformation) is not smart enough:
+    -- it does not notice that `f` and `x` arguments are loop invariant
+    -- and could be floated, and the whole `f x` expression shared.
+    -- If we create a closure with `f` and `x` bound in the environment,
+    -- then GHC is smart enough to share computation of `f x`.
     --
-    -- (if we create closure with f and x bound in the environment,
-    --  then GHC is smart enough to share computation of (f x))
+    -- For perspective, gauge and criterion < 1.4 mark similar functions as INLINE,
+    -- while criterion >= 1.4 switches to NOINLINE.
+    -- If we mark `benchLoop` NOINLINE then benchmark results are slightly larger
+    -- (noticeable in bench-fibo), because the loop body is slightly bigger,
+    -- since GHC does not unbox numbers or inline `Eq @Word64` dictionary.
     --
-    -- Criterion marks similar function as NOINLINE.
-    -- If we mark benchloop NOINLINE then benchmark results are slightly larger
-    -- (noticeable in bench-fibo) as the loop body is (slightly) bigger,
-    -- as GHC doesn't unbox&inline numbers, nor Eq @Word64 dictionary.
-    --
-    -- This function is called "benchloop", and not e.g. "go"
+    -- This function is called `benchLoop` instead of, say, `go`,
     -- so it is easier to spot in Core dumps.
-    benchloop f x n
+    benchLoop f x n
       | n == 0    = pure ()
       | otherwise = do
         _ <- evaluate (frc (f x))
-        benchloop f x (n - 1)
+        benchLoop f x (n - 1)
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
