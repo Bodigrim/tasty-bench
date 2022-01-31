@@ -1721,7 +1721,7 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
 formatSlowDown :: Double -> String
 formatSlowDown n = case m `compare` 0 of
   LT -> printf ", %2i%% faster than baseline" (-m)
-  EQ -> ""
+  EQ -> ", same execution time as baseline"
   GT -> printf ", %2i%% slower than baseline" m
   where
     m :: Int64
