@@ -702,6 +702,10 @@ import Test.Tasty.Providers
 import Test.Tasty.Runners
 #endif
 
+#if defined(mingw32_HOST_OS)
+import Data.Word (Word32)
+#endif
+
 #ifndef MIN_VERSION_tasty
 data Timeout
   = Timeout
@@ -803,6 +807,9 @@ newtype Benchmarkable = Benchmarkable
 supportsUnicode :: Bool
 #if MIN_VERSION_base(4,5,0)
 supportsUnicode = take 3 (textEncodingName enc) == "UTF"
+#if defined(mingw32_HOST_OS)
+  && unsafePerformIO getConsoleOutputCP == 65001
+#endif
   where
     enc = unsafePerformIO getLocaleEncoding
 #else
@@ -1113,10 +1120,16 @@ type Benchmark = TestTree
 --
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
+  let act = Test.Tasty.defaultMainWithIngredients benchIngredients $ testGroup "All" bs
 #if MIN_VERSION_base(4,5,0)
-    setLocaleEncoding utf8
+  setLocaleEncoding utf8
 #endif
-    Test.Tasty.defaultMainWithIngredients benchIngredients $ testGroup "All" bs
+#if defined(mingw32_HOST_OS)
+  codePage <- getConsoleOutputCP
+  bracket (setConsoleOutputCP 65001) (const $ setConsoleOutputCP codePage) (const act)
+#else
+  act
+#endif
 
 -- | List of default benchmark ingredients. This is what 'defaultMain' runs.
 --
@@ -1860,4 +1873,18 @@ word64ToDouble = fromIntegral
 #if !MIN_VERSION_base(4,10,0) && MIN_VERSION_base(4,6,0)
 int64ToWord64 :: Int64 -> Word64
 int64ToWord64 = fromIntegral
+#endif
+
+
+#if defined(mingw32_HOST_OS)
+
+#if defined(i386_HOST_ARCH)
+#define CCONV stdcall
+#else
+#define CCONV ccall
+#endif
+
+foreign import CCONV unsafe "windows.h GetConsoleOutputCP" getConsoleOutputCP :: IO Word32
+foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP :: Word32 -> IO ()
+
 #endif
