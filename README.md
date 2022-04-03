@@ -92,7 +92,7 @@ benchmark bench-fibo
   main-is:       BenchFibo.hs
   type:          exitcode-stdio-1.0
   build-depends: base, tasty-bench
-  ghc-options:  "-with-rtsopts=-A32m"
+  ghc-options:   "-with-rtsopts=-A32m"
 ```
 
 And here is `BenchFibo.hs`:
@@ -135,7 +135,7 @@ All 3 tests passed (7.25s)
 ```
 
 The output says that, for instance, the first benchmark was repeatedly
-executed for 2.13 seconds (wall time), its predicted mean CPU time was
+executed for 2.13 seconds (wall-clock time), its predicted mean CPU time was
 63 nanoseconds and means of individual samples do not often diverge from it
 further than ±3.4 nanoseconds (double standard deviation). Take standard
 deviation numbers with a grain of salt; there are lies, damned lies, and
@@ -342,7 +342,7 @@ hard to isolate benchmarks so that they do not interfere.
 Changing the order of benchmarks or skipping some of them
 has an effect on heap's layout and thus affects garbage collection.
 This issue is well attested in
-[`both`](https://github.com/haskell/criterion/issues/166)
+[both](https://github.com/haskell/criterion/issues/166)
 [`criterion`](https://github.com/haskell/criterion/issues/60)
 and
 [`gauge`](https://github.com/vincenthz/hs-gauge/issues/2).
@@ -389,7 +389,7 @@ this approach, but if you are desperate, here is how.
 Assuming that a benchmark is declared in `cabal` file as `benchmark my-bench` component,
 let's first find its executable:
 
-```bash
+```sh
 cabal build --enable-benchmarks my-bench
 MYBENCH=$(cabal list-bin my-bench) # available since cabal-3.4
 ```
@@ -397,7 +397,7 @@ MYBENCH=$(cabal list-bin my-bench) # available since cabal-3.4
 Now list all benchmark names (hopefully, they do not contain newlines),
 escape quotes and slashes, and run each of them separately:
 
-```bash
+```sh
 $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read -r name; do $MYBENCH -p '$0 == "'"$name"'"'; done
 ```
 
@@ -446,10 +446,10 @@ If you wish to compare two CSV reports non-interactively, here is a handy `awk` 
 awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 ```
 
-Here is a larger snippet to compare two `git` commits:
+Here is a larger shell snippet to compare two `git` commits:
 
 ```sh
-#!/usr/sh
+#!/bin/sh
 compareBenches () {
   # compareBenches oldCommit newCommit <other arguments are passed to benchmarks directly>
   OLD="$1"
@@ -489,7 +489,7 @@ or
 
 ## Comparison between benchmarks
 
-You can also compare benchmarks to each other without reaching to external tools,
+You can also compare benchmarks to each other without any external tools,
 all in the comfort of your terminal.
 
 ```haskell

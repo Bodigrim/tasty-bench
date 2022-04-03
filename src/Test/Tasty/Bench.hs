@@ -74,7 +74,7 @@ Benchmarks are declared in a separate section of @cabal@ file:
 >   main-is:       BenchFibo.hs
 >   type:          exitcode-stdio-1.0
 >   build-depends: base, tasty-bench
->   ghc-options:  "-with-rtsopts=-A32m"
+>   ghc-options:   "-with-rtsopts=-A32m"
 
 And here is @BenchFibo.hs@:
 
@@ -114,7 +114,7 @@ the following output:
 > All 3 tests passed (7.25s)
 
 The output says that, for instance, the first benchmark was repeatedly
-executed for 2.13 seconds (wall time), its predicted mean CPU time was
+executed for 2.13 seconds (wall-clock time), its predicted mean CPU time was
 63 nanoseconds and means of individual samples do not often diverge from it
 further than ±3.4 nanoseconds (double standard deviation). Take standard
 deviation numbers with a grain of salt; there are lies, damned lies, and
@@ -400,7 +400,7 @@ If you wish to compare two CSV reports non-interactively, here is a handy @awk@ 
 
 > awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 
-Here is a larger snippet to compare two @git@ commits:
+Here is a larger shell snippet to compare two @git@ commits:
 
 > compareBenches () {
 >   # compareBenches oldCommit newCommit <other arguments are passed to benchmarks directly>
@@ -431,7 +431,7 @@ or [quotes](https://www.gnu.org/software/gawk/manual/gawk.html#More-CSV).
 
 === Comparison between benchmarks
 
-You can also compare benchmarks to each other without reaching to
+You can also compare benchmarks to each other without any
 external tools, all in the comfort of your terminal.
 
 > import Test.Tasty.Bench
@@ -1085,7 +1085,7 @@ bcompare
 bcompare = bcompareWithin (-1/0) (1/0)
 
 -- | Same as 'bcompare', but takes expected lower and upper bounds of
--- comparison. If the result is not within provided bounds, benchmark is failed.
+-- comparison. If the result is not within provided bounds, benchmark fails.
 -- This allows to create portable performance tests: instead of comparing
 -- to an absolute timeout or to previous runs, you can state that one implementation
 -- of an algorithm must be faster than another.
