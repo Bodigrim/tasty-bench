@@ -456,11 +456,11 @@ compareBenches () {
   shift
   NEW="$1"
   shift
-  git checkout "$OLD"
-  cabal run benchmarks -- --csv "$OLD".csv "$@"
-  git checkout "$NEW"
-  cabal run benchmarks -- --baseline "$OLD".csv --csv "$NEW".csv "$@"
-  git checkout "@{-2}"
+  git checkout -q "$OLD" && \
+  cabal run -v0 benchmarks -- --csv "$OLD".csv "$@" && \
+  git checkout -q "$NEW" && \
+  cabal run -v0 benchmarks -- --baseline "$OLD".csv --csv "$NEW".csv "$@" && \
+  git checkout -q "@{-2}" && \
   awk 'BEGIN{FS=",";OFS=",";print "Name,'"$OLD"','"$NEW"',Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' "$OLD".csv "$NEW".csv > "$OLD"-vs-"$NEW".csv
 }
 ```
