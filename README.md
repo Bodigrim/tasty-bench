@@ -333,7 +333,8 @@ look for another way to speed up generation of Fibonacci numbers.
 * If benchmarks fail with `Test dependencies form a loop`, this is likely
   because of `bcompare`, which compares a benchmark with itself.
   Locating a benchmark in a global environment may be tricky, please refer to
-  [`tasty` documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
+  [`tasty` documentation](https://github.com/UnkindPartition/tasty#patterns) for details
+  and consider using `locateBenchmark`.
 
 ## Isolating interfering benchmarks
 
@@ -521,14 +522,7 @@ All
       203 μs ± 4.1 μs, 128.36x
 ```
 
-Locating a baseline benchmark in larger suites could get tricky;
-
-```haskell
-bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
-```
-
-is a more robust choice of
-an [`awk` pattern](https://github.com/UnkindPartition/tasty#patterns) here.
+To locate a baseline benchmark in a larger suite use `locateBenchmark`.
 
 One can leverage comparisons between benchmarks to implement portable performance
 tests, expressing properties like "this algorithm must be at least twice faster

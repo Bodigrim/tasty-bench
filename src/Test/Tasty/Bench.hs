@@ -301,7 +301,8 @@ another way to speed up generation of Fibonacci numbers.
 -   If benchmarks fail with @Test dependencies form a loop@, this is likely
     because of 'bcompare', which compares a benchmark with itself.
     Locating a benchmark in a global environment may be tricky, please refer to
-    [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
+    [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details
+    and consider using 'locateBenchmark'.
 
 === Isolating interfering benchmarks
 
@@ -460,12 +461,7 @@ to @tenth@:
 >     twentieth: OK (6.96s)
 >       203 μs ± 4.1 μs, 128.36x
 
-Locating a baseline benchmark in larger suites could get tricky;
-
-> bcompare "$NF == \"tenth\" && $(NF-1) == \"fibonacci numbers\""
-
-is a more robust choice of
-an <https://github.com/UnkindPartition/tasty#patterns awk pattern> here.
+To locate a baseline benchmark in a larger suite use 'locateBenchmark'.
 
 One can leverage comparisons between benchmarks to implement portable performance
 tests, expressing properties like "this algorithm must be at least twice faster
@@ -633,6 +629,11 @@ module Test.Tasty.Bench
   , CsvPath(..)
   , BaselinePath(..)
   , SvgPath(..)
+#if MIN_VERSION_tasty(1,2,0)
+  -- * Utils
+  , locateBenchmark
+  , mapLeafBenchmarks
+#endif
 #else
   , Timeout(..)
   , RelStDev(..)
@@ -650,7 +651,7 @@ import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
 import Data.IORef
-import Data.List (intercalate, stripPrefix, isPrefixOf, genericLength, genericDrop)
+import Data.List (intercalate, stripPrefix, isPrefixOf, genericLength, genericDrop, foldl1')
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Traversable (forM)
@@ -696,7 +697,8 @@ import Test.Tasty.Ingredients.ConsoleReporter
 import Test.Tasty.Options
 #if MIN_VERSION_tasty(1,2,0)
 import Test.Tasty.Patterns.Eval (eval, asB, withFields)
-import Test.Tasty.Patterns.Types (Expr (And, StringLit))
+import Test.Tasty.Patterns.Types (Expr (And, Field, IntLit, NF, StringLit, Sub))
+import qualified Test.Tasty.Patterns.Types as Patterns
 #endif
 import Test.Tasty.Providers
 import Test.Tasty.Runners
@@ -1074,9 +1076,7 @@ bgroup = testGroup
 bcompare
   :: String
   -- ^ @tasty@ pattern, which must unambiguously
-  -- match a unique baseline benchmark. Locating a benchmark in a global environment
-  -- may be tricky, please refer to
-  -- [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details.
+  -- match a unique baseline benchmark. Consider using 'locateBenchmark' to construct it.
   -> Benchmark
   -- ^ Benchmark (or a group of benchmarks)
   -- to be compared against the baseline benchmark by dividing measured mean times.
@@ -1887,4 +1887,42 @@ int64ToWord64 = fromIntegral
 foreign import CCONV unsafe "windows.h GetConsoleOutputCP" getConsoleOutputCP :: IO Word32
 foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP :: Word32 -> IO ()
 
+#endif
+
+#ifdef MIN_VERSION_tasty
+#if MIN_VERSION_tasty(1,2,0)
+
+-- | Map leaf benchmarks ('bench', not 'bgroup') with a provided function,
+-- which has an access to leaf's reversed path.
+--
+-- This helper is useful for bulk application of 'bcompare'.
+-- See also 'locateBenchmark'.
+--
+mapLeafBenchmarks :: ([String] -> Benchmark -> Benchmark) -> Benchmark -> Benchmark
+mapLeafBenchmarks processLeaf = go mempty
+  where
+    go :: [String] -> Benchmark -> Benchmark
+    go path x = case x of
+      SingleTest name t    -> processLeaf (name : path) (SingleTest name t)
+      TestGroup name tts   -> TestGroup name (map (go (name : path))  tts)
+      PlusTestOptions g tt -> PlusTestOptions g (go path tt)
+      WithResource res f   -> WithResource res (go path . f)
+      AskOptions f         -> AskOptions (go path . f)
+      After dep expr tt    -> After dep expr (go path tt)
+
+-- | Construct an AWK expression to locate an individual element or elements in 'Benchmark'
+-- by the suffix of the path. Names are listed in reverse order:
+-- from 'bench'\'s own name to a name of the outermost 'bgroup'.
+--
+-- This function is meant to be used in conjunction with 'bcompare', e. g.,
+-- 'bcompare' ('Test.Tasty.Patterns.Printer.printAwkExpr' ('locateBenchmark' @path@)).
+-- See also 'mapLeafBenchmarks'.
+--
+locateBenchmark :: [String] -> Expr
+locateBenchmark [] = IntLit 1
+locateBenchmark path
+  = foldl1' And
+  $ zipWith (\i name -> Patterns.EQ (Field (Sub NF (IntLit i))) (StringLit name)) [0..] path
+
+#endif
 #endif

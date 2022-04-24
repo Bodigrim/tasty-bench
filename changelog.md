@@ -1,3 +1,7 @@
+# 0.3.2
+
+* Add `locateBenchmark` and `mapLeafBenchmarks`.
+
 # 0.3.1
 
 * Add `bcompareWithin` for portable performance tests.
