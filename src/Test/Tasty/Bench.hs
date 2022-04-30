@@ -735,6 +735,7 @@ data Timeout
 -- for extremely long benchmarks. If you wish to run all benchmarks
 -- only once, use command-line option @--stdev@ @Infinity@.
 --
+-- @since 0.2
 newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)
 
@@ -756,6 +757,7 @@ instance IsOption RelStDev where
 -- > import Test.Tasty (localOption)
 -- > localOption (FailIfSlower 0.10) (bgroup [...])
 --
+-- @since 0.2
 newtype FailIfSlower = FailIfSlower Double
   deriving (Show, Read, Typeable)
 
@@ -776,6 +778,7 @@ instance IsOption FailIfSlower where
 -- > import Test.Tasty (localOption)
 -- > localOption (FailIfFaster 0.10) (bgroup [...])
 --
+-- @since 0.2
 newtype FailIfFaster = FailIfFaster Double
   deriving (Show, Read, Typeable)
 
@@ -798,7 +801,10 @@ parsePositivePercents xs = do
 -- Drop-in replacement for @Criterion.@'Criterion.Benchmarkable' and
 -- @Gauge.@'Gauge.Benchmarkable'.
 --
-newtype Benchmarkable = Benchmarkable
+-- @since 0.1
+newtype Benchmarkable =
+    -- | @since 0.3
+    Benchmarkable
   { unBenchmarkable :: Word64 -> IO () -- ^ Run benchmark given number of times.
   } deriving (Typeable)
 
@@ -1025,6 +1031,8 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
 -- to finish in time even if at cost of precision. However, timeout is guidance
 -- not guarantee: 'measureCpuTime' can take longer, if there is not enough time
 -- to run at least thrice or an iteration takes unusually long.
+--
+-- @since 0.3
 measureCpuTime :: Timeout -> RelStDev -> Benchmarkable -> IO Double
 measureCpuTime
     = ((fmap ((/ 1e12) . word64ToDouble . measTime . estMean) .) .)
@@ -1054,6 +1062,7 @@ instance IsTest Benchmarkable where
 -- provide an interface compatible with @Criterion.@'Criterion.bench'
 -- and @Gauge.@'Gauge.bench'.
 --
+-- @since 0.1
 bench :: String -> Benchmarkable -> Benchmark
 bench = singleTest
 
@@ -1063,6 +1072,7 @@ bench = singleTest
 -- interface compatible with @Criterion.@'Criterion.bgroup' and
 -- @Gauge@.'Gauge.bgroup'.
 --
+-- @since 0.1
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup = testGroup
 
@@ -1073,6 +1083,7 @@ bgroup = testGroup
 -- versions of @criterion@, but their types are incompatible. Under the hood
 -- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
 --
+-- @since 0.2.4
 bcompare
   :: String
   -- ^ @tasty@ pattern, which must unambiguously
@@ -1093,6 +1104,7 @@ bcompare = bcompareWithin (-1/0) (1/0)
 -- E. g., 'bcompareWithin' 2.0 3.0 passes only if a benchmark is at least 2x
 -- and at most 3x slower than a baseline.
 --
+-- @since 0.3.1
 bcompareWithin
   :: Double    -- ^ Lower bound of relative speed up.
   -> Double    -- ^ Upper bound of relative spped up.
@@ -1112,12 +1124,14 @@ bcomparePrefix = "tasty-bench"
 -- This is a drop-in replacement for @Criterion.@'Criterion.Benchmark'
 -- and @Gauge.@'Gauge.Benchmark'.
 --
+-- @since 0.1
 type Benchmark = TestTree
 
 -- | Run benchmarks and report results, providing an interface
 -- compatible with @Criterion.@'Criterion.defaultMain' and
 -- @Gauge.@'Gauge.defaultMain'.
 --
+-- @since 0.1
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
   let act = Test.Tasty.defaultMainWithIngredients benchIngredients $ testGroup "All" bs
@@ -1133,6 +1147,7 @@ defaultMain bs = do
 
 -- | List of default benchmark ingredients. This is what 'defaultMain' runs.
 --
+-- @since 0.2
 benchIngredients :: [Ingredient]
 benchIngredients = [listingTests, composeReporters consoleBenchReporter (composeReporters csvReporter svgReporter)]
 
@@ -1199,6 +1214,7 @@ funcToBench frc = (Benchmarkable .) . benchLoop
 -- Drop-in replacement for @Criterion.@'Criterion.nf' and
 -- @Gauge.@'Gauge.nf'.
 --
+-- @since 0.1
 nf :: NFData b => (a -> b) -> a -> Benchmarkable
 nf = funcToBench force
 {-# INLINE nf #-}
@@ -1228,6 +1244,7 @@ nf = funcToBench force
 --
 -- Drop-in replacement for @Criterion.@'Criterion.whnf' and @Gauge.@'Gauge.whnf'.
 --
+-- @since 0.1
 whnf :: (a -> b) -> a -> Benchmarkable
 whnf = funcToBench id
 {-# INLINE whnf #-}
@@ -1263,6 +1280,7 @@ ioToBench frc act = Benchmarkable go
 --
 -- Drop-in replacement for @Criterion.@'Criterion.nfIO' and @Gauge.@'Gauge.nfIO'.
 --
+-- @since 0.1
 nfIO :: NFData a => IO a -> Benchmarkable
 nfIO = ioToBench force
 {-# INLINE nfIO #-}
@@ -1287,6 +1305,7 @@ nfIO = ioToBench force
 --
 -- Drop-in replacement for @Criterion.@'Criterion.whnfIO' and @Gauge.@'Gauge.whnfIO'.
 --
+-- @since 0.1
 whnfIO :: IO a -> Benchmarkable
 whnfIO = ioToBench id
 {-# INLINE whnfIO #-}
@@ -1327,6 +1346,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 --
 -- Drop-in replacement for @Criterion.@'Criterion.nfAppIO' and @Gauge.@'Gauge.nfAppIO'.
 --
+-- @since 0.1
 nfAppIO :: NFData b => (a -> IO b) -> a -> Benchmarkable
 nfAppIO = ioFuncToBench force
 {-# INLINE nfAppIO #-}
@@ -1356,6 +1376,7 @@ nfAppIO = ioFuncToBench force
 --
 -- Drop-in replacement for @Criterion.@'Criterion.whnfAppIO' and @Gauge.@'Gauge.whnfAppIO'.
 --
+-- @since 0.1
 whnfAppIO :: (a -> IO b) -> a -> Benchmarkable
 whnfAppIO = ioFuncToBench id
 {-# INLINE whnfAppIO #-}
@@ -1405,6 +1426,7 @@ whnfAppIO = ioFuncToBench id
 --
 -- > Unhandled resource. Probably a bug in the runner you're using.
 --
+-- @since 0.2
 env :: NFData env => IO env -> (env -> Benchmark) -> Benchmark
 env res = envWithCleanup res (const $ pure ())
 
@@ -1416,6 +1438,7 @@ env res = envWithCleanup res (const $ pure ())
 -- @Gauge.@'Gauge.envWithCleanup', and involves
 -- 'unsafePerformIO'. Consider using 'withResource' instead.
 --
+-- @since 0.2
 envWithCleanup :: NFData env => IO env -> (env -> IO a) -> (env -> Benchmark) -> Benchmark
 envWithCleanup res fin f = withResource
   (res >>= evaluate . force)
@@ -1447,6 +1470,7 @@ envWithCleanup res fin f = withResource
 --     Just mb -> mb >>= \\b -> if b then exitSuccess else exitFailure
 -- @
 --
+-- @since 0.3
 newtype CsvPath = CsvPath FilePath
   deriving (Typeable)
 
@@ -1459,6 +1483,7 @@ instance IsOption (Maybe CsvPath) where
 -- | Run benchmarks and save results in CSV format.
 -- It activates when @--csv@ @FILE@ command line option is specified.
 --
+-- @since 0.1
 csvReporter :: Ingredient
 csvReporter = TestReporter [Option (Proxy :: Proxy (Maybe CsvPath))] $
   \opts tree -> do
@@ -1518,6 +1543,7 @@ encodeCsv xs
 -- Modifying it via 'adjustOption' or 'localOption' does not have any effect.
 -- One can however pass it to 'tryIngredients' 'benchIngredients'.
 --
+-- @since 0.3
 newtype SvgPath = SvgPath FilePath
   deriving (Typeable)
 
@@ -1530,6 +1556,7 @@ instance IsOption (Maybe SvgPath) where
 -- | Run benchmarks and plot results in SVG format.
 -- It activates when @--svg@ @FILE@ command line option is specified.
 --
+-- @since 0.2.4
 svgReporter :: Ingredient
 svgReporter = TestReporter [Option (Proxy :: Proxy (Maybe SvgPath))] $
   \opts tree -> do
@@ -1649,6 +1676,7 @@ encodeSvg (x : xs) = x : encodeSvg xs
 -- Modifying it via 'adjustOption' or 'localOption' does not have any effect.
 -- One can however pass it to 'tryIngredients' 'benchIngredients'.
 --
+-- @since 0.3
 newtype BaselinePath = BaselinePath FilePath
   deriving (Typeable)
 
@@ -1666,6 +1694,7 @@ instance IsOption (Maybe BaselinePath) where
 -- too slow / too fast benchmarks as failed in accordance to
 -- bounds specified by @--fail-if-slower@ @PERCENT@ and @--fail-if-faster@ @PERCENT@.
 --
+-- @since 0.2
 consoleBenchReporter :: Ingredient
 consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe BaselinePath))] $ \opts -> do
   baseline <- case lookupOption opts of
@@ -1898,6 +1927,7 @@ foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP ::
 -- This helper is useful for bulk application of 'bcompare'.
 -- See also 'locateBenchmark'.
 --
+-- @since 0.3.2
 mapLeafBenchmarks :: ([String] -> Benchmark -> Benchmark) -> Benchmark -> Benchmark
 mapLeafBenchmarks processLeaf = go mempty
   where
@@ -1918,6 +1948,7 @@ mapLeafBenchmarks processLeaf = go mempty
 -- 'bcompare' ('Test.Tasty.Patterns.Printer.printAwkExpr' ('locateBenchmark' @path@)).
 -- See also 'mapLeafBenchmarks'.
 --
+-- @since 0.3.2
 locateBenchmark :: [String] -> Expr
 locateBenchmark [] = IntLit 1
 locateBenchmark path
