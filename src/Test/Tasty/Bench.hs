@@ -1760,14 +1760,24 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
       let doubleSigmaCell = takeWhile (/= ',') rest
       (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
 
-formatSlowDown :: Double -> String
-formatSlowDown n = case m `compare` 0 of
-  LT -> printf ", %2i%% faster than baseline" (-m)
+-- | Print slowdown/speedup in a human readable way.
+formatSlowDown
+  :: Double
+       -- ^ Fraction \(r > 0\):
+       -- New duration measurement divided by baseline duration measurement.
+       --
+       -- - If \(r < 1   \) then speedup by factor \(1/r\).
+       -- - If \(r > 1   \) then slowdown by factor \(r\).
+       -- - If \(r == 1.0\) then no change.
+       --   This last case has ideally probability 0 (for arbitrary precision),
+       --   so it is maybe pointless to handle it.
+       --   However, for code conservativity reasons we keep the case,
+       --   returning an empty string.
+  -> String
+formatSlowDown r = case r `compare` 1.0 of
+  LT -> printf ", faster than baseline by factor %.2f" (1 / r)
   EQ -> ""
-  GT -> printf ", %2i%% slower than baseline" m
-  where
-    m :: Int64
-    m = truncate ((n - 1) * 100)
+  GT -> printf ", slower than baseline by factor %.2f" r
 
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
