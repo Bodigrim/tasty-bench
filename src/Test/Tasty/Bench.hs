@@ -1709,7 +1709,7 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
       where
         isAcceptable = isAcceptableVsBaseline && isAcceptableVsBcompare
         slowDown = compareVsBaseline baseline name est
-        isAcceptableVsBaseline = slowDown >= lowerBound && slowDown <= upperBound
+        isAcceptableVsBaseline = maybe True (\ x -> x >= lowerBound && x <= upperBound) slowDown
         (isAcceptableVsBcompare, bcompareMsg) = case mDepR of
           Nothing -> (True, "")
           Just (WithLoHi depR depLowerBound depUpperBound) -> case safeRead (resultDescription depR) of
@@ -1733,13 +1733,13 @@ joinQuotedFields (x : xs)
 estTime :: Estimate -> Double
 estTime = word64ToDouble . measTime . estMean
 
-compareVsBaseline :: S.Set String -> TestName -> Estimate -> Double
-compareVsBaseline baseline name (Estimate m stdev) = case mOld of
-  Nothing -> 1
-  Just (oldTime, oldDoubleSigma)
+compareVsBaseline :: S.Set String -> TestName -> Estimate -> Maybe Double
+compareVsBaseline baseline name (Estimate m stdev) = (`fmap` mOld) $
+  \ (oldTime, oldDoubleSigma) ->
     -- time and oldTime must be signed integers to use 'abs'
-    | abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma -> 1
-    | otherwise -> int64ToDouble time / int64ToDouble oldTime
+    if abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma
+      then 1
+      else int64ToDouble time / int64ToDouble oldTime
   where
     time = word64ToInt64 $ measTime m
 
@@ -1762,22 +1762,24 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
 
 -- | Print slowdown/speedup in a human readable way.
 formatSlowDown
-  :: Double
+  :: Maybe Double
        -- ^ Fraction \(r > 0\):
-       -- New duration measurement divided by baseline duration measurement.
+       -- New duration measurement divided by baseline duration measurement
+       -- (or 'Nothing' if no baseline measurement exists).
        --
        -- - If \(r < 1   \) then speedup by factor \(1/r\).
        -- - If \(r > 1   \) then slowdown by factor \(r\).
        -- - If \(r == 1.0\) then no change.
        --   This last case has ideally probability 0 (for arbitrary precision),
-       --   so it is maybe pointless to handle it.
-       --   However, for code conservativity reasons we keep the case,
-       --   returning an empty string.
+       --   but in practice it appears
+       --   (see [issue #28](https://github.com/Bodigrim/tasty-bench/issues/28)).
   -> String
-formatSlowDown r = case r `compare` 1.0 of
-  LT -> printf ", faster than baseline by factor %.2f" (1 / r)
-  EQ -> ""
-  GT -> printf ", slower than baseline by factor %.2f" r
+formatSlowDown m = case m of
+  Nothing -> ""
+  Just r  -> case r `compare` 1.0 of
+    LT -> printf ", faster than baseline by factor %.2f" (1 / r)
+    EQ -> ", unchanged against baseline"
+    GT -> printf ", slower than baseline by factor %.2f" r
 
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }
