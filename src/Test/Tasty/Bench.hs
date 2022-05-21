@@ -380,11 +380,11 @@ key. This produces a report as follows:
 > All
 >   fibonacci numbers
 >     fifth:     OK (0.44s)
->        53 ns ± 2.7 ns,  8% slower than baseline
+>        53 ns ± 2.7 ns,  8% more than baseline
 >     tenth:     OK (0.33s)
->       641 ns ±  59 ns
+>       641 ns ±  59 ns,       same as baseline
 >     twentieth: OK (0.36s)
->        77 μs ± 6.4 μs,  5% faster than baseline
+>        77 μs ± 6.4 μs,  5% less than baseline
 >
 > All 3 tests passed (1.50s)
 
@@ -652,6 +652,7 @@ import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
 import Data.IORef
 import Data.List (intercalate, stripPrefix, isPrefixOf, genericLength, genericDrop, foldl1')
+import Data.Maybe (fromMaybe)
 import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Traversable (forM)
@@ -1705,10 +1706,11 @@ consoleBenchReporter = modifyConsoleReporter [Option (Proxy :: Proxy (Maybe Base
     Nothing  -> r
     Just (WithLoHi est lowerBound upperBound) ->
       (if isAcceptable then id else forceFail)
-      r { resultDescription = pretty est ++ bcompareMsg ++ formatSlowDown slowDown }
+      r { resultDescription = pretty est ++ bcompareMsg ++ formatSlowDown mSlowDown }
       where
         isAcceptable = isAcceptableVsBaseline && isAcceptableVsBcompare
-        slowDown = compareVsBaseline baseline name est
+        mSlowDown = compareVsBaseline baseline name est
+        slowDown = fromMaybe 1 mSlowDown
         isAcceptableVsBaseline = slowDown >= lowerBound && slowDown <= upperBound
         (isAcceptableVsBcompare, bcompareMsg) = case mDepR of
           Nothing -> (True, "")
@@ -1733,13 +1735,13 @@ joinQuotedFields (x : xs)
 estTime :: Estimate -> Double
 estTime = word64ToDouble . measTime . estMean
 
-compareVsBaseline :: S.Set String -> TestName -> Estimate -> Double
+compareVsBaseline :: S.Set String -> TestName -> Estimate -> Maybe Double
 compareVsBaseline baseline name (Estimate m stdev) = case mOld of
-  Nothing -> 1
+  Nothing -> Nothing
   Just (oldTime, oldDoubleSigma)
     -- time and oldTime must be signed integers to use 'abs'
-    | abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma -> 1
-    | otherwise -> int64ToDouble time / int64ToDouble oldTime
+    | abs (time - oldTime) < max (2 * word64ToInt64 stdev) oldDoubleSigma -> Just 1
+    | otherwise -> Just $ int64ToDouble time / int64ToDouble oldTime
   where
     time = word64ToInt64 $ measTime m
 
@@ -1760,14 +1762,15 @@ compareVsBaseline baseline name (Estimate m stdev) = case mOld of
       let doubleSigmaCell = takeWhile (/= ',') rest
       (,) <$> safeRead timeCell <*> safeRead doubleSigmaCell
 
-formatSlowDown :: Double -> String
-formatSlowDown n = case m `compare` 0 of
-  LT -> printf ", %2i%% faster than baseline" (-m)
-  EQ -> ""
-  GT -> printf ", %2i%% slower than baseline" m
+formatSlowDown :: Maybe Double -> String
+formatSlowDown Nothing = ""
+formatSlowDown (Just ratio) = case percents `compare` 0 of
+  LT -> printf ", %2i%% less than baseline" (-percents)
+  EQ -> ",       same as baseline"
+  GT -> printf ", %2i%% more than baseline" percents
   where
-    m :: Int64
-    m = truncate ((n - 1) * 100)
+    percents :: Int64
+    percents = truncate ((ratio - 1) * 100)
 
 forceFail :: Result -> Result
 forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "FAIL" }

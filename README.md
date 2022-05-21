@@ -423,11 +423,11 @@ with `--baseline FILE` key. This produces a report as follows:
 All
   fibonacci numbers
     fifth:     OK (0.44s)
-       53 ns ± 2.7 ns,  8% slower than baseline
+       53 ns ± 2.7 ns,  8% more than baseline
     tenth:     OK (0.33s)
-      641 ns ±  59 ns
+      641 ns ±  59 ns,       same as baseline
     twentieth: OK (0.36s)
-       77 μs ± 6.4 μs,  5% faster than baseline
+       77 μs ± 6.4 μs,  5% less than baseline
 
 All 3 tests passed (1.50s)
 ```
