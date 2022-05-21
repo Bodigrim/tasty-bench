@@ -132,7 +132,7 @@ watch videos while waiting for benchmarks to finish. That's the cause
 of a notorious "variance introduced by outliers: 88% (severely inflated)" warning.
 
 To alleviate this issue @tasty-bench@ measures CPU time by 'getCPUTime'
-instead of wall-clock time.
+instead of wall-clock time by default.
 It does not provide a perfect isolation from other processes (e. g.,
 if CPU cache is spoiled by others, populating data back from RAM
 is your burden), but is a bit more stable.
@@ -142,6 +142,9 @@ Caveat: this means that for multithreaded algorithms
 @criterion@ and @gauge@ print maximum of core's wall-clock time.
 It also means that @tasty-bench@ cannot measure time spent out of process,
 e. g., calls to other executables.
+
+You have the option to measure wall-clock time instead, using the
+'TimeMode' tasty option or the @--time-mode@ CLI flag.
 
 === Statistical model
 
@@ -548,6 +551,11 @@ Use @--help@ to list command-line options.
 
     File to plot results in SVG format.
 
+[@--time-mode@]:
+
+    Whether to measure CPU time ("cpu") or wall-clock time
+    ("wall-clock") (default: cpu)
+
 [@+RTS@ @-T@]:
 
     Estimate and report memory usage.
@@ -629,6 +637,7 @@ module Test.Tasty.Bench
   , CsvPath(..)
   , BaselinePath(..)
   , SvgPath(..)
+  , TimeMode(..)
 #if MIN_VERSION_tasty(1,2,0)
   -- * Utils
   , locateBenchmark
@@ -657,6 +666,11 @@ import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Traversable (forM)
 import Data.Word (Word64)
+#if MIN_VERSION_base(4,11,0)
+import GHC.Clock (getMonotonicTimeNSec)
+#else
+import qualified System.Clock as Clock
+#endif
 import GHC.Conc
 #if MIN_VERSION_base(4,5,0)
 import GHC.IO.Encoding
@@ -740,6 +754,11 @@ data Timeout
 newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)
 
+-- | Whether to measure CPU time or wall-clock time. See the module
+-- header or the README for a more detailed discussion.
+data TimeMode = CpuTime | WallTime
+  deriving (Show, Eq, Typeable)
+
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
   defaultValue = RelStDev 0.05
@@ -794,6 +813,20 @@ parsePositivePercents xs = do
   x <- safeRead xs
   guard (x > 0)
   pure (x / 100)
+
+instance IsOption TimeMode where
+  defaultValue = CpuTime
+  parseValue v = case v of
+    "cpu" -> Just CpuTime
+    "wall-clock" -> Just WallTime
+    _ -> Nothing
+  optionName = pure "time-mode"
+  optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall-clock\")"
+#if MIN_VERSION_tasty(1,3,0)
+  showDefaultValue m = Just $ case m of
+    CpuTime -> "cpu"
+    WallTime -> "wall-clock"
+#endif
 #endif
 
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
@@ -970,13 +1003,25 @@ getAllocsAndCopied = do
     pure (0, 0, 0)
 #endif
 
-measure :: Word64 -> Benchmarkable -> IO Measurement
-measure n (Benchmarkable act) = do
+getTimePicoSecs :: TimeMode -> IO Word64
+getTimePicoSecs timeMode = case timeMode of
+  CpuTime -> fromInteger <$> getCPUTime
+  WallTime -> do
+#if MIN_VERSION_base(4,11,0)
+    (1000 *) <$> getMonotonicTimeNSec
+#else
+    Clock.TimeSpec sec nsec <- Clock.getTime Clock.Monotonic
+    pure $ (10 ^ (12 :: Word64)) * fromIntegral sec + 1000 * fromIntegral nsec
+#endif
+
+measure :: TimeMode -> Word64 -> Benchmarkable -> IO Measurement
+measure timeMode n (Benchmarkable act) = do
+  let getTimePicoSecs' = getTimePicoSecs timeMode
   performGC
-  startTime <- fromInteger <$> getCPUTime
+  startTime <- getTimePicoSecs'
   (startAllocs, startCopied, startMaxMemInUse) <- getAllocsAndCopied
   act n
-  endTime <- fromInteger <$> getCPUTime
+  endTime <- getTimePicoSecs'
   (endAllocs, endCopied, endMaxMemInUse) <- getAllocsAndCopied
   let meas = Measurement
         { measTime   = endTime - startTime
@@ -990,18 +1035,20 @@ measure n (Benchmarkable act) = do
   pure meas
 #endif
 
-measureUntil :: Bool -> Timeout -> RelStDev -> Benchmarkable -> IO Estimate
-measureUntil _ _ (RelStDev targetRelStDev) b
+measureUntil :: TimeMode -> Bool -> Timeout -> RelStDev -> Benchmarkable -> IO Estimate
+measureUntil timeMode _ _ (RelStDev targetRelStDev) b
   | isInfinite targetRelStDev, targetRelStDev > 0 = do
-  t1 <- measure 1 b
+  t1 <- measure timeMode 1 b
   pure $ Estimate { estMean = t1, estStdev = 0 }
-measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
-  t1 <- measure 1 b
+measureUntil timeMode warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
+  t1 <- measure' 1 b
   go 1 t1 0
   where
+    measure' = measure timeMode
+
     go :: Word64 -> Measurement -> Word64 -> IO Estimate
     go n t1 sumOfTs = do
-      t2 <- measure (2 * n) b
+      t2 <- measure' (2 * n) b
 
       let Estimate (Measurement meanN allocN copiedN maxMemN) stdevN = predictPerturbed t1 t2
           isTimeoutSoon = case timeout of
@@ -1023,7 +1070,7 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
           , estStdev = scale stdevN }
         else go (2 * n) t2 sumOfTs'
 
--- | An internal routine to measure execution time in seconds
+-- | An internal routine to measure CPU execution time in seconds
 -- for a given timeout (put 'NoTimeout', or 'mkTimeout' 100000000 for 100 seconds)
 -- and a target relative standard deviation
 -- (put 'RelStDev' 0.05 for 5% or 'RelStDev' (1/0) to run only one iteration).
@@ -1037,7 +1084,7 @@ measureUntil warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
 measureCpuTime :: Timeout -> RelStDev -> Benchmarkable -> IO Double
 measureCpuTime
     = ((fmap ((/ 1e12) . word64ToDouble . measTime . estMean) .) .)
-    . measureUntil False
+    . measureUntil CpuTime False
 
 #ifdef MIN_VERSION_tasty
 
@@ -1048,10 +1095,12 @@ instance IsTest Benchmarkable where
     -- than options of an ingredient to allow setting them on per-test level.
     , Option (Proxy :: Proxy FailIfSlower)
     , Option (Proxy :: Proxy FailIfFaster)
+    , Option (Proxy :: Proxy TimeMode)
     ]
   run opts b = const $ case getNumThreads (lookupOption opts) of
     1 -> do
-      est <- measureUntil True (lookupOption opts) (lookupOption opts) b
+      let timeMode = lookupOption opts
+      est <- measureUntil timeMode True (lookupOption opts) (lookupOption opts) b
       let FailIfSlower ifSlower = lookupOption opts
           FailIfFaster ifFaster = lookupOption opts
       pure $ testPassed $ show (WithLoHi est (1 - ifFaster) (1 + ifSlower))
