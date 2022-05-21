@@ -153,7 +153,7 @@ watch videos while waiting for benchmarks to finish. That's the cause
 of a notorious "variance introduced by outliers: 88% (severely inflated)" warning.
 
 To alleviate this issue `tasty-bench` measures CPU time by `getCPUTime`
-instead of wall-clock time.
+instead of wall-clock time by default.
 It does not provide a perfect isolation from other processes (e. g.,
 if CPU cache is spoiled by others, populating data back from RAM
 is your burden), but is a bit more stable.
@@ -163,6 +163,9 @@ Caveat: this means that for multithreaded algorithms
 `criterion` and `gauge` print maximum of core's wall-clock time.
 It also means that `tasty-bench` cannot measure time spent out of process,
 e. g., calls to other executables.
+
+You have the option to measure wall-clock time instead, using the
+`TimeMode` tasty option or the `--time-mode` CLI flag.
 
 ## Statistical model
 
@@ -602,6 +605,10 @@ Use `--help` to list command-line options.
 * `--svg`
 
   File to plot results in SVG format.
+
+* `--time-mode`
+
+  Whether to measure CPU time ("cpu") or wall-clock time ("wall-clock") (default: cpu)
 
 * `+RTS -T`
 
