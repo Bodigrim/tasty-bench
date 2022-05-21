@@ -6,3 +6,30 @@ constraint-set debug
 
 constraint-set no-tasty-debug
   constraints: tasty-bench -tasty +debug
+
+constraint-set tasty-0.11.3
+  constraints: tasty == 0.11.3, hashable < 1.4
+  ghc: >= 7.4 && < 8.4
+
+constraint-set tasty-0.12
+  constraints: tasty ^>= 0.12, hashable < 1.4
+  ghc: >= 7.4 && < 8.6
+
+constraint-set tasty-1.0
+  constraints: tasty ^>= 1.0, hashable < 1.4
+  ghc: >= 7.4 && < 8.6
+
+constraint-set tasty-1.1
+  constraints: tasty ^>= 1.1, hashable < 1.4
+  ghc: >= 7.4
+
+constraint-set tasty-1.2
+  constraints: tasty ^>= 1.2, hashable < 1.4
+  ghc: >= 7.4
+
+constraint-set tasty-1.3
+  constraints: tasty ^>= 1.3, hashable < 1.4
+  ghc: >= 7.8
+
+constraint-set tasty-1.4
+  constraints: tasty ^>= 1.4
