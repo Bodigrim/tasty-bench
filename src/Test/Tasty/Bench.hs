@@ -554,7 +554,7 @@ Use @--help@ to list command-line options.
 [@--time-mode@]:
 
     Whether to measure CPU time ("cpu") or wall-clock time
-    ("wall-clock") (default: cpu)
+    ("wall") (default: cpu)
 
 [@+RTS@ @-T@]:
 
@@ -818,14 +818,14 @@ instance IsOption TimeMode where
   defaultValue = CpuTime
   parseValue v = case v of
     "cpu" -> Just CpuTime
-    "wall-clock" -> Just WallTime
+    "wall" -> Just WallTime
     _ -> Nothing
   optionName = pure "time-mode"
-  optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall-clock\")"
+  optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall\")"
 #if MIN_VERSION_tasty(1,3,0)
   showDefaultValue m = Just $ case m of
     CpuTime -> "cpu"
-    WallTime -> "wall-clock"
+    WallTime -> "wall"
 #endif
 #endif
 
