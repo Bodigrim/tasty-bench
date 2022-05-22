@@ -608,7 +608,7 @@ Use `--help` to list command-line options.
 
 * `--time-mode`
 
-  Whether to measure CPU time ("cpu") or wall-clock time ("wall-clock") (default: cpu)
+  Whether to measure CPU time ("cpu") or wall-clock time ("wall") (default: cpu)
 
 * `+RTS -T`
 
