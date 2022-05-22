@@ -666,11 +666,6 @@ import Data.Monoid (All(..), Any(..))
 import Data.Proxy
 import Data.Traversable (forM)
 import Data.Word (Word64)
-#if MIN_VERSION_base(4,11,0)
-import GHC.Clock (getMonotonicTimeNSec)
-#else
-import qualified System.Clock as Clock
-#endif
 import GHC.Conc
 #if MIN_VERSION_base(4,5,0)
 import GHC.IO.Encoding
@@ -756,7 +751,12 @@ newtype RelStDev = RelStDev Double
 
 -- | Whether to measure CPU time or wall-clock time. See the module
 -- header or the README for a more detailed discussion.
-data TimeMode = CpuTime | WallTime
+data TimeMode = CpuTime
+#ifdef MIN_VERSION_tasty
+#if MIN_VERSION_tasty(1,2,2)
+  | WallTime
+#endif
+#endif
   deriving (Show, Eq, Typeable)
 
 #ifdef MIN_VERSION_tasty
@@ -818,14 +818,18 @@ instance IsOption TimeMode where
   defaultValue = CpuTime
   parseValue v = case v of
     "cpu" -> Just CpuTime
+#if MIN_VERSION_tasty(1,2,2)
     "wall" -> Just WallTime
+#endif
     _ -> Nothing
   optionName = pure "time-mode"
   optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall\")"
 #if MIN_VERSION_tasty(1,3,0)
   showDefaultValue m = Just $ case m of
     CpuTime -> "cpu"
+#if MIN_VERSION_tasty(1,2,2)
     WallTime -> "wall"
+#endif
 #endif
 #endif
 
@@ -1006,12 +1010,10 @@ getAllocsAndCopied = do
 getTimePicoSecs :: TimeMode -> IO Word64
 getTimePicoSecs timeMode = case timeMode of
   CpuTime -> fromInteger <$> getCPUTime
-  WallTime -> do
-#if MIN_VERSION_base(4,11,0)
-    (1000 *) <$> getMonotonicTimeNSec
-#else
-    Clock.TimeSpec sec nsec <- Clock.getTime Clock.Monotonic
-    pure $ (10 ^ (12 :: Word64)) * fromIntegral sec + 1000 * fromIntegral nsec
+#ifdef MIN_VERSION_tasty
+#if MIN_VERSION_tasty(1,2,2)
+  WallTime -> round . (1e12 *) <$> getTime
+#endif
 #endif
 
 measure :: TimeMode -> Word64 -> Benchmarkable -> IO Measurement
