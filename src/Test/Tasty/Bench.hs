@@ -1145,6 +1145,28 @@ bgroup = testGroup
 -- versions of @criterion@, but their types are incompatible. Under the hood
 -- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
 --
+-- Here is a basic example:
+--
+-- > import Test.Tasty.Bench
+-- >
+-- > fibo :: Int -> Integer
+-- > fibo n = if n < 2 then toInteger n else fibo (n - 1) + fibo (n - 2)
+-- >
+-- > main :: IO ()
+-- > main = defaultMain
+-- >   [ bgroup "fibonacci numbers"
+-- >     [ bcompare "tenth"  $ bench "fifth"     $ nf fibo  5
+-- >     ,                     bench "tenth"     $ nf fibo 10
+-- >     , bcompare "tenth"  $ bench "twentieth" $ nf fibo 20
+-- >     ]
+-- >   ]
+--
+-- More complex examples:
+--
+-- * https://hackage.haskell.org/package/chimera-0.3.2.0/src/bench/Bench.hs
+-- * https://hackage.haskell.org/package/fast-digits-0.3.1.0/src/bench/Bench.hs
+-- * https://hackage.haskell.org/package/unicode-data-0.3.0/src/bench/Main.hs
+--
 -- @since 0.2.4
 bcompare
   :: String
