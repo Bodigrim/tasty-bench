@@ -1,6 +1,8 @@
 # 0.3.2
 
 * Add `locateBenchmark` and `mapLeafBenchmarks`.
+* Support measuring of wall-clock time.
+* Make messages for baseline comparison less ambiguous.
 
 # 0.3.1
 
