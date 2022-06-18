@@ -140,11 +140,9 @@ is your burden), but is a bit more stable.
 Caveat: this means that for multithreaded algorithms
 @tasty-bench@ reports total elapsed CPU time across all cores, while
 @criterion@ and @gauge@ print maximum of core's wall-clock time.
-It also means that @tasty-bench@ cannot measure time spent out of process,
-e. g., calls to other executables.
-
-You have the option to measure wall-clock time instead, using the
-'TimeMode' tasty option or the @--time-mode@ CLI flag.
+It also means that by default @tasty-bench@ does not measure time spent out of process,
+e. g., calls to other executables. To work around this limitation
+use @--time-mode@ command-line option or set it locally via 'TimeMode' option.
 
 === Statistical model
 
@@ -553,8 +551,7 @@ Use @--help@ to list command-line options.
 
 [@--time-mode@]:
 
-    Whether to measure CPU time ("cpu") or wall-clock time
-    ("wall") (default: cpu)
+    Whether to measure CPU time (@cpu@, default) or wall-clock time (@wall@).
 
 [@+RTS@ @-T@]:
 
@@ -749,12 +746,25 @@ data Timeout
 newtype RelStDev = RelStDev Double
   deriving (Show, Read, Typeable)
 
--- | Whether to measure CPU time or wall-clock time. See the module
--- header or the README for a more detailed discussion.
+-- | Whether to measure CPU time or wall-clock time.
+-- Normally 'CpuTime' is a better option (and default),
+-- but consider switching to 'WallTime'
+-- to measure multithreaded algorithms or time spent in external processes.
+--
+-- One can switch the default measurement mode globally
+-- using @--time-mode@ command-line option,
+-- but it is usually better to adjust the mode locally:
+--
+-- > import Test.Tasty (localOption)
+-- > localOption WallTime (bgroup [...])
+--
+-- @since 0.3.2
 data TimeMode = CpuTime
+  -- ^ Measure CPU time.
 #ifdef MIN_VERSION_tasty
 #if MIN_VERSION_tasty(1,2,2)
   | WallTime
+  -- ^ Measure wall-clock time.
 #endif
 #endif
   deriving (Show, Eq, Typeable)
