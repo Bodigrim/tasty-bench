@@ -2013,6 +2013,8 @@ foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP ::
 -- This helper is useful for bulk application of 'bcompare'.
 -- See also 'locateBenchmark'.
 --
+-- Real world example: https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
+--
 -- @since 0.3.2
 mapLeafBenchmarks :: ([String] -> Benchmark -> Benchmark) -> Benchmark -> Benchmark
 mapLeafBenchmarks processLeaf = go mempty
@@ -2033,6 +2035,8 @@ mapLeafBenchmarks processLeaf = go mempty
 -- This function is meant to be used in conjunction with 'bcompare', e. g.,
 -- 'bcompare' ('Test.Tasty.Patterns.Printer.printAwkExpr' ('locateBenchmark' @path@)).
 -- See also 'mapLeafBenchmarks'.
+--
+-- Real world example: https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
 --
 -- @since 0.3.2
 locateBenchmark :: [String] -> Expr
