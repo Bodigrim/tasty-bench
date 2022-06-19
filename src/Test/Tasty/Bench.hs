@@ -767,7 +767,7 @@ data TimeMode = CpuTime
   -- ^ Measure wall-clock time.
 #endif
 #endif
-  deriving (Show, Eq, Typeable)
+  deriving (Typeable)
 
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
