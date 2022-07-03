@@ -25,7 +25,7 @@ is up to 6x faster than @criterion@ and up to 8x faster than @gauge@.
 @tasty-bench@ is a native Haskell library and works everywhere, where GHC
 does. We support a full range of architectures (@i386@, @amd64@, @armhf@,
 @arm64@, @ppc64le@, @s390x@) and operating systems (Linux, Windows, MacOS,
-FreeBSD), plus any GHC from 7.0 to 9.2.
+FreeBSD), plus any GHC from 7.0 to 9.4.
 
 === How is it possible?
 
@@ -299,7 +299,8 @@ another way to speed up generation of Fibonacci numbers.
     way. This is a fundamental restriction of @tasty@ to list and filter
     benchmarks without launching missiles.
 
--   If benchmarks fail with @Test dependencies form a loop@, this is likely
+-   If benchmarks fail with @Test dependencies form a loop@
+    or @Test dependencies have cycles@, this is likely
     because of 'bcompare', which compares a benchmark with itself.
     Locating a benchmark in a global environment may be tricky, please refer to
     [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details
@@ -1144,6 +1145,8 @@ bgroup = testGroup
 -- This function is a vague reminiscence of @bcompare@, which existed in pre-1.0
 -- versions of @criterion@, but their types are incompatible. Under the hood
 -- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
+-- If you use 'bcompare', it is prudent to add @tasty >= 1.2@ to @build-depends@
+-- section of your cabal file.
 --
 -- Here is a basic example:
 --
