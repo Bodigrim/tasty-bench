@@ -454,17 +454,18 @@ Here is a larger shell snippet to compare two `git` commits:
 ```sh
 #!/bin/sh
 compareBenches () {
-  # compareBenches oldCommit newCommit <other arguments are passed to benchmarks directly>
+  if [ "$#" -lt 2 ]; then
+    printf "Usage:\n  compareBenches oldCommit newCommit ...\nwhere ... is passed to benchmarks directly.\n"
+    return 0
+  fi
   OLD="$1"
   shift
   NEW="$1"
   shift
-  git checkout -q "$OLD" && \
-  cabal run -v0 benchmarks -- --csv "$OLD".csv "$@" && \
-  git checkout -q "$NEW" && \
-  cabal run -v0 benchmarks -- --baseline "$OLD".csv --csv "$NEW".csv "$@" && \
-  git checkout -q "@{-2}" && \
-  awk 'BEGIN{FS=",";OFS=",";print "Name,'"$OLD"','"$NEW"',Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' "$OLD".csv "$NEW".csv > "$OLD"-vs-"$NEW".csv
+  OLDCSV=$(echo "$OLD".csv | sed -e s#/##g)
+  NEWCSV=$(echo "$NEW".csv | sed -e s#/##g)
+  OLDVSNEWCSV=$(echo "$OLD"-vs-"$NEW".csv | sed -e s#/##g)
+  git checkout -q "$OLD" && cabal run -v0 benchmarks -- --csv "$OLDCSV" "$@" && git checkout -q "$NEW" && cabal run -v0 benchmarks -- --baseline "$OLDCSV" --csv "$NEWCSV" "$@" && git checkout -q "@{-2}" && awk 'BEGIN{FS=",";OFS=",";print "Name,'"$OLD"','"$NEW"',Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' "$OLDCSV" "$NEWCSV" > "$OLDVSNEWCSV"
 }
 ```
 
