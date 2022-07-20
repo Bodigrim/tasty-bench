@@ -3,6 +3,7 @@
 * Add `locateBenchmark` and `mapLeafBenchmarks`.
 * Support measuring of wall-clock time.
 * Make messages for baseline comparison less ambiguous.
+* Graceful degradation on non-Unicode terminals.
 
 # 0.3.1
 
