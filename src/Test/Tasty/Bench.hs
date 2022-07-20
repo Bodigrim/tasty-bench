@@ -637,11 +637,11 @@ module Test.Tasty.Bench
   , BaselinePath(..)
   , SvgPath(..)
   , TimeMode(..)
-#if MIN_VERSION_tasty(1,2,0)
   -- * Utils
+#if MIN_VERSION_tasty(1,0,0)
   , locateBenchmark
-  , mapLeafBenchmarks
 #endif
+  , mapLeafBenchmarks
 #else
   , Timeout(..)
   , RelStDev(..)
@@ -704,7 +704,7 @@ import qualified Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import Test.Tasty.Options
-#if MIN_VERSION_tasty(1,2,0)
+#if MIN_VERSION_tasty(1,0,0)
 import Test.Tasty.Patterns.Eval (eval, asB, withFields)
 import Test.Tasty.Patterns.Types (Expr (And, Field, IntLit, NF, StringLit, Sub))
 import qualified Test.Tasty.Patterns.Types as Patterns
@@ -760,13 +760,16 @@ newtype RelStDev = RelStDev Double
 -- > import Test.Tasty (localOption)
 -- > localOption WallTime (bgroup [...])
 --
+-- section of your cabal file.
 -- @since 0.3.2
 data TimeMode = CpuTime
   -- ^ Measure CPU time.
 #ifdef MIN_VERSION_tasty
 #if MIN_VERSION_tasty(1,2,2)
   | WallTime
-  -- ^ Measure wall-clock time.
+  -- ^ Measure wall-clock time. This requires @tasty-1.2.2@, so if you use it
+  -- it is prudent to add @tasty >= 1.2.2@ to @build-depends@
+  -- section of your cabal file.
 #endif
 #endif
   deriving (Typeable)
@@ -2009,7 +2012,6 @@ foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP ::
 #endif
 
 #ifdef MIN_VERSION_tasty
-#if MIN_VERSION_tasty(1,2,0)
 
 -- | Map leaf benchmarks ('bench', not 'bgroup') with a provided function,
 -- which has an access to leaf's reversed path.
@@ -2030,8 +2032,11 @@ mapLeafBenchmarks processLeaf = go mempty
       PlusTestOptions g tt -> PlusTestOptions g (go path tt)
       WithResource res f   -> WithResource res (go path . f)
       AskOptions f         -> AskOptions (go path . f)
+#if MIN_VERSION_tasty(1,2,0)
       After dep expr tt    -> After dep expr (go path tt)
+#endif
 
+#if MIN_VERSION_tasty(1,0,0)
 -- | Construct an AWK expression to locate an individual element or elements in 'Benchmark'
 -- by the suffix of the path. Names are listed in reverse order:
 -- from 'bench'\'s own name to a name of the outermost 'bgroup'.
@@ -2039,6 +2044,10 @@ mapLeafBenchmarks processLeaf = go mempty
 -- This function is meant to be used in conjunction with 'bcompare', e. g.,
 -- 'bcompare' ('Test.Tasty.Patterns.Printer.printAwkExpr' ('locateBenchmark' @path@)).
 -- See also 'mapLeafBenchmarks'.
+--
+-- 'locateBenchmark' requires @tasty-1.0@, so if you use it
+-- it is prudent to add @tasty >= 1.0@ to @build-depends@
+-- section of your cabal file.
 --
 -- Real world example: https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
 --
