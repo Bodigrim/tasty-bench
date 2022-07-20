@@ -401,37 +401,16 @@ package to focus on rerunning failing items only.
 
 If you wish to compare two CSV reports non-interactively, here is a handy @awk@ incantation:
 
-> awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
-
-Here is a larger shell snippet to compare two @git@ commits:
-
-> compareBenches () {
->   if [ "$#" -lt 2 ]; then
->     printf "Usage:\n  compareBenches oldCommit newCommit ...\nwhere ... is passed to benchmarks directly.\n"
->     return 0
->   fi
->   OLD="$1"
->   shift
->   NEW="$1"
->   shift
->   OLDCSV=$(echo "$OLD".csv | sed -e s#/##g)
->   NEWCSV=$(echo "$NEW".csv | sed -e s#/##g)
->   OLDVSNEWCSV=$(echo "$OLD"-vs-"$NEW".csv | sed -e s#/##g)
->   git checkout -q "$OLD" && cabal run -v0 benchmarks -- --csv "$OLDCSV" "$@" && git checkout -q "$NEW" && cabal run -v0 benchmarks -- --baseline "$OLDCSV" --csv "$NEWCSV" "$@" && git checkout -q "@{\-2}" && awk 'BEGIN{FS=",";OFS=",";print "Name,'"$OLD"','"$NEW"',Ratio"}FNR==1{next}FNR==NR{a[$1]=$2;next}{print $1,a[$1],$2,$2/a[$1];gs+=log($2/a[$1]);gc++}END{print "Geometric mean,,",exp(gs/gc)}' "$OLDCSV" "$NEWCSV" > "$OLDVSNEWCSV"
-> }
+> awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{trueNF=NF;next}NF<trueNF{print "Benchmark names should not contain newlines";exit 1}FNR==NR{oldTime=$(NF-trueNF+2);NF-=trueNF-1;a[$0]=oldTime;next}{newTime=$(NF-trueNF+2);NF-=trueNF-1;print $0,a[$0],newTime,newTime/a[$0];gs+=log(newTime/a[$0]);gc++}END{if(gc>0)print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 
 Note that columns in CSV report are different from what @criterion@ or @gauge@
 would produce. If names do not contain commas, missing columns can be faked this way:
 
-> cat tasty-bench.csv | awk 'BEGIN {FS=",";OFS=","}; {print $1,$2/1e12,$2/1e12,$2/1e12,$3/2e12,$3/2e12,$3/2e12}' | sed '1s/.*/Name,Mean,MeanLB,MeanUB,Stddev,StddevLB,StddevUB/'
+> awk 'BEGIN{FS=",";OFS=",";print "Name,Mean,MeanLB,MeanUB,Stddev,StddevLB,StddevUB"}NR==1{trueNF=NF;next}NF<trueNF{print $0;next}{mean=$(NF-trueNF+2);stddev=$(NF-trueNF+3);NF-=trueNF-1;print $0,mean/1e12,mean/1e12,mean/1e12,stddev/2e12,stddev/2e12,stddev/2e12}'
 
 To fake @gauge@ in @--csvraw@ mode use
 
-> cat tasty-bench.csv | awk 'BEGIN {FS=",";OFS=","}; {print $1,1,$2/1e12,0,$2/1e12,$2/1e12,0,$6+0,0,0,0,0,$4+0,0,$5+0,0,0,0,0}' | sed '1s/.*/name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds/'
-
-Please refer to @gawk@ manual, if you wish to process names
-with [commas](https://www.gnu.org/software/gawk/manual/gawk.html#Splitting-By-Content)
-or [quotes](https://www.gnu.org/software/gawk/manual/gawk.html#More-CSV).
+> awk 'BEGIN{FS=",";OFS=",";print "name,iters,time,cycles,cpuTime,utime,stime,maxrss,minflt,majflt,nvcsw,nivcsw,allocated,numGcs,bytesCopied,mutatorWallSeconds,mutatorCpuSeconds,gcWallSeconds,gcCpuSeconds"}NR==1{trueNF=NF;next}NF<trueNF{print $0;next}{mean=$(NF-trueNF+2);fourth=$(NF-trueNF+4);fifth=$(NF-trueNF+5);sixth=$(NF-trueNF+6);NF-=trueNF-1;print $0,1,mean/1e12,0,mean/1e12,mean/1e12,0,sixth+0,0,0,0,0,fourth+0,0,fifth+0,0,0,0,0}'
 
 === Comparison between benchmarks
 
