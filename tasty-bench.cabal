@@ -21,6 +21,7 @@ description:
 extra-source-files:
   changelog.md
   README.md
+  compare_benches.sh
 extra-doc-files:
   example.svg
 
