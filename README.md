@@ -513,7 +513,7 @@ and plot them using `gnuplot` or other software. But for convenience
 there is also a built-in quick-and-dirty SVG plotting feature,
 which can be invoked by passing `--svg FILE`. Here is a sample of its output:
 
-![Plotting](./example.svg)
+![Plotting](https://hackage.haskell.org/package/tasty-bench/src/example.svg)
 
 ## Build flags
 
