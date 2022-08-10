@@ -746,7 +746,7 @@ data TimeMode = CpuTime
 #ifdef MIN_VERSION_tasty
 #if MIN_VERSION_tasty(1,2,2)
   | WallTime
-  -- ^ Measure wall-clock time. This requires @tasty-1.2.2@, so if you use it
+  -- ^ Measure wall-clock time. This requires @tasty-1.2.2@, so if you use 'WallTime'
   -- it is prudent to add @tasty >= 1.2.2@ to @build-depends@
   -- section of your cabal file.
 #endif
@@ -2024,7 +2024,7 @@ mapLeafBenchmarks processLeaf = go mempty
 -- 'bcompare' ('Test.Tasty.Patterns.Printer.printAwkExpr' ('locateBenchmark' @path@)).
 -- See also 'mapLeafBenchmarks'.
 --
--- 'locateBenchmark' requires @tasty-1.0@, so if you use it
+-- This function requires @tasty-1.0@, so if you use 'locateBenchmark'
 -- it is prudent to add @tasty >= 1.0@ to @build-depends@
 -- section of your cabal file.
 --
