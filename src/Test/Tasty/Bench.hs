@@ -740,6 +740,7 @@ newtype RelStDev = RelStDev Double
 -- > localOption WallTime (bgroup [...])
 --
 -- section of your cabal file.
+--
 -- @since 0.3.2
 data TimeMode = CpuTime
   -- ^ Measure CPU time.
