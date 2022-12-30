@@ -1999,7 +1999,10 @@ foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP ::
 -- This helper is useful for bulk application of 'bcompare'.
 -- See also 'locateBenchmark'.
 --
--- Real world example: https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
+-- Real world examples:
+--
+-- * https://hackage.haskell.org/package/chimera-0.3.3.0/src/bench/Bench.hs
+-- * https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
 --
 -- @since 0.3.2
 mapLeafBenchmarks :: ([String] -> Benchmark -> Benchmark) -> Benchmark -> Benchmark
@@ -2029,7 +2032,10 @@ mapLeafBenchmarks processLeaf = go mempty
 -- it is prudent to add @tasty >= 1.0@ to @build-depends@
 -- section of your cabal file.
 --
--- Real world example: https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
+-- Real world examples:
+--
+-- * https://hackage.haskell.org/package/chimera-0.3.3.0/src/bench/Bench.hs
+-- * https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
 --
 -- @since 0.3.2
 locateBenchmark :: [String] -> Expr
