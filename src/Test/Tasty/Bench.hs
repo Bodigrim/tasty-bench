@@ -1393,7 +1393,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 {-# INLINE ioFuncToBench #-}
 
 -- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of
--- an application of @f@ to @x@.
+-- an application of @f@ to @x@
 -- and compute its normal form (by means of 'force').
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
@@ -1423,7 +1423,7 @@ nfAppIO = ioFuncToBench force
 {-# INLINE nfAppIO #-}
 
 -- | 'whnfAppIO' @f@ @x@ measures time to evaluate side-effects of
--- an application of @f@ to @x@.
+-- an application of @f@ to @x@
 -- and compute its weak head normal form.
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
