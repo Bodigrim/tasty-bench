@@ -351,18 +351,12 @@ use
 
 Finally, as an ultimate measure to reduce interference between
 benchmarks, one can run each of them in a separate process. We do not
-quite recommend this approach, but if you are desperate, here is how.
+quite recommend this approach, but if you are desperate, here is how:
 
-Assuming that a benchmark is declared in @cabal@ file as
-@benchmark@ @my-bench@ component, let’s first find its executable:
+> cabal run -v0 all:benches -- -l | sed -e 's/[\"]/\\\\\\&/g' | while read -r name; do cabal run -v0 all:benches -- -p '$0 == "'"$name"'"'; done
 
-> cabal build --enable-benchmarks my-bench
-> MYBENCH=$(cabal list-bin my-bench) # available since cabal-3.4
-
-Now list all benchmark names (hopefully, they do not contain newlines),
-escape quotes and slashes, and run each of them separately:
-
-> $MYBENCH -l | sed -e 's/[\"]/\\\\\\&/g' | while read -r name; do $MYBENCH -p '$0 == "'"$name"'"'; done
+This assumes that there is a single benchmark suite in the project
+and that benchmark names do not contain newlines.
 
 === Comparison against baseline
 
