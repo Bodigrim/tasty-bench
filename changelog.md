@@ -1,3 +1,8 @@
+# 0.3.3
+
+* Drop support of `tasty < 1.2.3`.
+* Make benchmarks immune to `-fspec-constr-count` limit.
+
 # 0.3.2
 
 * Add `locateBenchmark` and `mapLeafBenchmarks`.
