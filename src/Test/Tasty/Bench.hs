@@ -571,6 +571,7 @@ Here is an example:
 
 -}
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -689,6 +690,15 @@ import Test.Tasty.Runners
 
 #if defined(mingw32_HOST_OS)
 import Data.Word (Word32)
+#endif
+
+#if MIN_VERSION_ghc_prim(0,3,1)
+import GHC.Types (SPEC(..))
+#else
+import GHC.Exts (SpecConstrAnnotation(..))
+
+data SPEC = SPEC | SPEC2
+{-# ANN type SPEC ForceSpecConstr #-}
 #endif
 
 #ifndef MIN_VERSION_tasty
@@ -1205,8 +1215,8 @@ benchIngredients = [listingTests, composeReporters consoleBenchReporter (compose
 
 #endif
 
-funcToBench :: (b -> c) -> (a -> b) -> a -> Benchmarkable
-funcToBench frc = (Benchmarkable .) . benchLoop
+funcToBench :: forall a b c. (b -> c) -> (a -> b) -> a -> Benchmarkable
+funcToBench frc = (Benchmarkable .) . benchLoop SPEC
   where
     -- Here we rely on the fact that GHC (unless spurred by
     -- -fstatic-argument-transformation) is not smart enough:
@@ -1223,11 +1233,15 @@ funcToBench frc = (Benchmarkable .) . benchLoop
     --
     -- This function is called `benchLoop` instead of, say, `go`,
     -- so it is easier to spot in Core dumps.
-    benchLoop f x n
+    --
+    -- Forcing SpecConst optimization with SPEC makes the behaviour of benchmarks
+    -- independent of -fspec-constr-count.
+    benchLoop :: SPEC -> (a -> b) -> a -> Word64 -> IO ()
+    benchLoop !_ f x n
       | n == 0    = pure ()
       | otherwise = do
         _ <- evaluate (frc (f x))
-        benchLoop f x (n - 1)
+        benchLoop SPEC f x (n - 1)
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute

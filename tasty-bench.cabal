@@ -56,7 +56,8 @@ library
 
   build-depends:
     base >= 4.3 && < 5,
-    deepseq >= 1.1
+    deepseq >= 1.1,
+    ghc-prim
   if flag(tasty)
     build-depends:
       containers >= 0.4,
