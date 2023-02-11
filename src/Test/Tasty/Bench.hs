@@ -586,10 +586,8 @@ module Test.Tasty.Bench
   , Benchmark
   , bench
   , bgroup
-#if MIN_VERSION_tasty(1,2,0)
   , bcompare
   , bcompareWithin
-#endif
   , env
   , envWithCleanup
   ,
@@ -617,9 +615,7 @@ module Test.Tasty.Bench
   , SvgPath(..)
   , TimeMode(..)
   -- * Utils
-#if MIN_VERSION_tasty(1,0,0)
   , locateBenchmark
-#endif
   , mapLeafBenchmarks
 #else
   , Timeout(..)
@@ -683,11 +679,9 @@ import qualified Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import Test.Tasty.Options
-#if MIN_VERSION_tasty(1,0,0)
 import Test.Tasty.Patterns.Eval (eval, asB, withFields)
 import Test.Tasty.Patterns.Types (Expr (And, Field, IntLit, NF, StringLit, Sub))
 import qualified Test.Tasty.Patterns.Types as Patterns
-#endif
 import Test.Tasty.Providers
 import Test.Tasty.Runners
 #endif
@@ -745,12 +739,8 @@ newtype RelStDev = RelStDev Double
 data TimeMode = CpuTime
   -- ^ Measure CPU time.
 #ifdef MIN_VERSION_tasty
-#if MIN_VERSION_tasty(1,2,2)
   | WallTime
-  -- ^ Measure wall-clock time. This requires @tasty-1.2.2@, so if you use 'WallTime'
-  -- it is prudent to add @tasty >= 1.2.2@ to @build-depends@
-  -- section of your cabal file.
-#endif
+  -- ^ Measure wall-clock time.
 #endif
   deriving (Typeable)
 
@@ -813,18 +803,14 @@ instance IsOption TimeMode where
   defaultValue = CpuTime
   parseValue v = case v of
     "cpu" -> Just CpuTime
-#if MIN_VERSION_tasty(1,2,2)
     "wall" -> Just WallTime
-#endif
     _ -> Nothing
   optionName = pure "time-mode"
   optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall\")"
 #if MIN_VERSION_tasty(1,3,0)
   showDefaultValue m = Just $ case m of
     CpuTime -> "cpu"
-#if MIN_VERSION_tasty(1,2,2)
     WallTime -> "wall"
-#endif
 #endif
 #endif
 
@@ -1006,9 +992,7 @@ getTimePicoSecs :: TimeMode -> IO Word64
 getTimePicoSecs timeMode = case timeMode of
   CpuTime -> fromInteger <$> getCPUTime
 #ifdef MIN_VERSION_tasty
-#if MIN_VERSION_tasty(1,2,2)
   WallTime -> round . (1e12 *) <$> getTime
-#endif
 #endif
 
 measure :: TimeMode -> Word64 -> Benchmarkable -> IO Measurement
@@ -1123,14 +1107,11 @@ bench = singleTest
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup = testGroup
 
-#if MIN_VERSION_tasty(1,2,0)
 -- | Compare benchmarks, reporting relative speed up or slow down.
 --
 -- This function is a vague reminiscence of @bcompare@, which existed in pre-1.0
 -- versions of @criterion@, but their types are incompatible. Under the hood
--- 'bcompare' is a thin wrapper over 'after' and requires @tasty-1.2@.
--- If you use 'bcompare', it is prudent to add @tasty >= 1.2@ to @build-depends@
--- section of your cabal file.
+-- 'bcompare' is a thin wrapper over 'after'.
 --
 -- Here is a basic example:
 --
@@ -1188,7 +1169,6 @@ bcompareWithin lo hi s = case parseExpr s of
 
 bcomparePrefix :: String
 bcomparePrefix = "tasty-bench"
-#endif
 
 -- | Benchmarks are actually just a regular 'Test.Tasty.TestTree' in disguise.
 --
@@ -1903,12 +1883,9 @@ testNamesAndDeps im = foldTestTree trivialFold
   , foldAfter  = const foldDeps
 #else
   , foldGroup  = map . first . (++) . (++ ".")
-#if MIN_VERSION_tasty(1,2,0)
   , foldAfter  = foldDeps
 #endif
-#endif
   }
-#if MIN_VERSION_tasty(1,2,0)
   where
     foldDeps :: DependencyType -> Expr -> [(a, Unique (WithLoHi IM.Key))] -> [(a, Unique (WithLoHi IM.Key))]
     foldDeps AllSucceed (And (StringLit xs) p)
@@ -1922,7 +1899,6 @@ findMatchingKeys im pattern =
   foldMap (\(k, v) -> if withFields v pat == Right True then Unique k else mempty) $ IM.assocs im
   where
     pat = eval pattern >>= asB
-#endif
 
 postprocessResult
     :: (TestName -> Maybe (WithLoHi Result) -> Result -> Result)
@@ -2015,11 +1991,8 @@ mapLeafBenchmarks processLeaf = go mempty
       PlusTestOptions g tt -> PlusTestOptions g (go path tt)
       WithResource res f   -> WithResource res (go path . f)
       AskOptions f         -> AskOptions (go path . f)
-#if MIN_VERSION_tasty(1,2,0)
       After dep expr tt    -> After dep expr (go path tt)
-#endif
 
-#if MIN_VERSION_tasty(1,0,0)
 -- | Construct an AWK expression to locate an individual element or elements in 'Benchmark'
 -- by the suffix of the path. Names are listed in reverse order:
 -- from 'bench'\'s own name to a name of the outermost 'bgroup'.
@@ -2027,10 +2000,6 @@ mapLeafBenchmarks processLeaf = go mempty
 -- This function is meant to be used in conjunction with 'bcompare', e. g.,
 -- 'bcompare' ('Test.Tasty.Patterns.Printer.printAwkExpr' ('locateBenchmark' @path@)).
 -- See also 'mapLeafBenchmarks'.
---
--- This function requires @tasty-1.0@, so if you use 'locateBenchmark'
--- it is prudent to add @tasty >= 1.0@ to @build-depends@
--- section of your cabal file.
 --
 -- Real world examples:
 --
@@ -2044,5 +2013,4 @@ locateBenchmark path
   = foldl1' And
   $ zipWith (\i name -> Patterns.EQ (Field (Sub NF (IntLit i))) (StringLit name)) [0..] path
 
-#endif
 #endif
