@@ -1245,7 +1245,8 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
--- a normal form (by means of 'force') of an application of @f@ to @x@.
+-- a normal form (by means of 'force', not 'Control.DeepSeq.rnf')
+-- of an application of @f@ to @x@.
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
@@ -1272,10 +1273,15 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
 -- such measurements are noisy and involve an overhead. Results are more reliable
 -- when @f@ @x@ takes at least several milliseconds.
 --
--- Note that forcing a normal form requires an additional
+-- Remember that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios (imagine benchmarking 'tail'),
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
+--
+-- 'nf' @f@ is equivalent to 'whnf' ('force' '.' @f@), but not to
+-- 'whnf' ('Control.DeepSeq.rnf' '.' @f@). The former retains the result
+-- in memory until it is fully evaluated, while the latter allows
+-- evaluated parts of the result to be garbage-collected immediately.
 --
 -- Drop-in replacement for @Criterion.@'Criterion.nf' and
 -- @Gauge.@'Gauge.nf'.
@@ -1327,14 +1333,14 @@ ioToBench frc act = Benchmarkable go
 {-# INLINE ioToBench #-}
 
 -- | 'nfIO' @x@ measures time to evaluate side-effects of @x@
--- and compute its normal form (by means of 'force').
+-- and compute its normal form (by means of 'force', not 'Control.DeepSeq.rnf').
 --
 -- Pure subexpression of an effectful computation @x@
 -- may be evaluated only once and get cached.
 -- To avoid surprising results it is usually preferable
 -- to use 'nfAppIO' instead.
 --
--- Note that forcing a normal form requires an additional
+-- Remember that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
@@ -1389,7 +1395,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 
 -- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of
 -- an application of @f@ to @x@
--- and compute its normal form (by means of 'force').
+-- and compute its normal form (by means of 'force', not 'Control.DeepSeq.rnf').
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
@@ -1400,7 +1406,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 -- but if @x@ is not a primitive data type, consider forcing its evaluation
 -- separately, e. g., via 'env' or 'withResource'.
 --
--- Note that forcing a normal form requires an additional
+-- Remember that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
