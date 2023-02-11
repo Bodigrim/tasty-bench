@@ -93,6 +93,8 @@ benchmark bench-fibo
   type:          exitcode-stdio-1.0
   build-depends: base, tasty-bench
   ghc-options:   "-with-rtsopts=-A32m"
+  if impl(ghc >= 8.6)
+    ghc-options: -fproc-alignment=64
 ```
 
 And here is `BenchFibo.hs`:
@@ -398,8 +400,13 @@ and that benchmark names do not contain newlines.
 
 ## Comparison against baseline
 
-One can compare benchmark results against an earlier baseline in an automatic way.
-To use this feature, first run `tasty-bench` with `--csv FILE` key
+One can compare benchmark results against an earlier run in an automatic way.
+
+When using this feature, it's especially important to compile benchmarks with
+`ghc-options: `[`-fproc-alignment`](https://downloads.haskell.org/ghc/latest/docs/users_guide/debugging.html#ghc-flag--fproc-alignment)`=64`, otherwise results could be skewed by
+intermittent changes in cache-line alignment.
+
+Firstly, run `tasty-bench` with `--csv FILE` key
 to dump results to `FILE` in CSV format
 (it could be a good idea to set smaller `--stdev`, if possible):
 
