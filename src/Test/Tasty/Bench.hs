@@ -1283,6 +1283,10 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
 -- in memory until it is fully evaluated, while the latter allows
 -- evaluated parts of the result to be garbage-collected immediately.
 --
+-- For users of @{-# LANGUAGE LinearTypes #-}@: if @f@ is a linear function,
+-- then 'nf' @f@ @x@ is ill-typed, but you can use 'nf' @(\\y -> f y)@ @x@
+-- instead.
+--
 -- Drop-in replacement for @Criterion.@'Criterion.nf' and
 -- @Gauge.@'Gauge.nf'.
 --
