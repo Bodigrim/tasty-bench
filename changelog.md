@@ -1,3 +1,7 @@
+# 0.3.4
+
+* Force single-threaded execution in `defaultMain`.
+
 # 0.3.3
 
 * Drop support of `tasty < 1.2.3`.

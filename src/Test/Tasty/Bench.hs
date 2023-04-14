@@ -1196,7 +1196,7 @@ type Benchmark = TestTree
 -- @since 0.1
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
-  let act = Test.Tasty.defaultMainWithIngredients benchIngredients $ testGroup "All" bs
+  let act = defaultMain' bs
 #if MIN_VERSION_base(4,5,0)
   setLocaleEncoding utf8
 #endif
@@ -1206,6 +1206,15 @@ defaultMain bs = do
 #else
   act
 #endif
+
+defaultMain' :: [Benchmark] -> IO ()
+defaultMain' bs  = do
+  installSignalHandlers
+  let b = testGroup "All" bs
+  opts <- parseOptions benchIngredients b
+  case tryIngredients benchIngredients (setOption (NumThreads 1) opts) b of
+    Nothing -> exitFailure
+    Just act -> act >>= \x -> if x then exitSuccess else exitFailure
 
 -- | List of default benchmark ingredients. This is what 'defaultMain' runs.
 --
