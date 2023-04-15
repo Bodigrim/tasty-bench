@@ -603,6 +603,7 @@ module Test.Tasty.Bench
   , nfAppIO
   , whnfAppIO
   , measureCpuTime
+  , measureCpuTimeAndStDev
 #ifdef MIN_VERSION_tasty
   -- * Ingredients
   , benchIngredients
@@ -1074,8 +1075,18 @@ measureUntil timeMode warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
 --
 -- @since 0.3
 measureCpuTime :: Timeout -> RelStDev -> Benchmarkable -> IO Double
-measureCpuTime
-    = ((fmap ((/ 1e12) . word64ToDouble . measTime . estMean) .) .)
+measureCpuTime = ((fmap fst .) .) . measureCpuTimeAndStDev
+
+-- | Same as 'measureCpuTime', but returns both CPU execution time
+-- and its standard deviation.
+--
+-- @since 0.3.4
+measureCpuTimeAndStDev :: Timeout -> RelStDev -> Benchmarkable -> IO (Double, Double)
+measureCpuTimeAndStDev
+    = ((fmap (\x ->
+        ( word64ToDouble (measTime (estMean x)) / 1e12
+        , word64ToDouble (estStdev x) / 1e12
+        )) .) .)
     . measureUntil CpuTime False
 
 #ifdef MIN_VERSION_tasty

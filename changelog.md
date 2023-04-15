@@ -1,6 +1,7 @@
 # 0.3.4
 
 * Force single-threaded execution in `defaultMain`.
+* Expose `measureCpuTimeAndStDev` helper to analyse benchmarks manually.
 
 # 0.3.3
 
