@@ -19,11 +19,11 @@ description:
   regular @tasty@ tests.
 
 extra-source-files:
-  changelog.md
-  README.md
   compare_benches.sh
 extra-doc-files:
+  changelog.md
   example.svg
+  README.md
 
 tested-with: GHC == 9.6.1 GHC == 9.4.4, GHC == 9.2.7, GHC==9.0.2, GHC==8.10.7, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2, GHC==7.2.2, GHC==7.0.4
 
@@ -56,15 +56,15 @@ library
 
   build-depends:
     base >= 4.3 && < 5,
-    deepseq >= 1.1,
-    ghc-prim
+    deepseq >= 1.1 && < 1.5,
+    ghc-prim < 0.11
   if flag(tasty)
     build-depends:
-      containers >= 0.4,
-      tasty >= 1.2.3
+      containers >= 0.4 && < 0.7,
+      tasty >= 1.2.3 && < 1.5
   if impl(ghc < 7.8)
     build-depends:
-      tagged >= 0.2
+      tagged >= 0.2 && < 0.9
 
   if flag(debug)
     cpp-options: -DDEBUG
