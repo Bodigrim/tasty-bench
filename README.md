@@ -107,7 +107,7 @@ fibo n = if n < 2 then toInteger n else fibo (n - 1) + fibo (n - 2)
 
 main :: IO ()
 main = defaultMain
-  [ bgroup "fibonacci numbers"
+  [ bgroup "Fibonacci numbers"
     [ bench "fifth"     $ nf fibo  5
     , bench "tenth"     $ nf fibo 10
     , bench "twentieth" $ nf fibo 20
@@ -125,7 +125,7 @@ results in the following output:
 
 ```
 All
-  fibonacci numbers
+  Fibonacci numbers
     fifth:     OK (2.13s)
        63 ns ± 3.4 ns
     tenth:     OK (1.71s)
@@ -216,7 +216,7 @@ memory usage:
 
 ```
 All
-  fibonacci numbers
+  Fibonacci numbers
     fifth:     OK (2.13s)
        63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied, 2.0 MB peak memory
     tenth:     OK (1.71s)
@@ -340,6 +340,30 @@ look for another way to speed up generation of Fibonacci numbers.
   [`tasty` documentation](https://github.com/UnkindPartition/tasty#patterns) for details
   and consider using `locateBenchmark`.
 
+* When seeing
+
+  ```
+  This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning).
+  ```
+
+  do follow the advice: abort benchmarks and pass `-t100` or similar. Unless you are
+  benchmarking a very computationally expensive function, a single benchmark should
+  stabilize after a couple of seconds. This warning is a sign that your environment
+  is too noisy, in which case `tasty-bench` will continue trying with exponentially
+  longer intervals, often unproductively.
+
+* The following error can be thrown when benchmarks are built with
+  `ghc-options: -threaded`:
+
+  ```
+  Benchmarks must not be run concurrently. Please pass -j1 and/or avoid +RTS -N.
+  ```
+
+  The underlying cause is that `tasty` runs tests concurrently, which is harmful
+  for reliable performance measurements. Make sure to use `tasty-bench >= 0.3.4` and invoke
+  `Test.Tasty.Bench.defaultMain` and not `Test.Tasty.defaultMain`. Note that
+  `localOption (NumThreads 1)` quashes the warning, but does not eliminate the cause.
+
 ## Isolating interfering benchmarks
 
 One difficulty of benchmarking in Haskell is that it is
@@ -412,9 +436,9 @@ to dump results to `FILE` in CSV format
 
 ```
 Name,Mean (ps),2*Stdev (ps)
-All.fibonacci numbers.fifth,48453,4060
-All.fibonacci numbers.tenth,637152,46744
-All.fibonacci numbers.twentieth,81369531,3342646
+All.Fibonacci numbers.fifth,48453,4060
+All.Fibonacci numbers.tenth,637152,46744
+All.Fibonacci numbers.twentieth,81369531,3342646
 ```
 
 Now modify implementation and rerun benchmarks
@@ -422,7 +446,7 @@ with `--baseline FILE` key. This produces a report as follows:
 
 ```
 All
-  fibonacci numbers
+  Fibonacci numbers
     fifth:     OK (0.44s)
        53 ns ± 2.7 ns,  8% more than baseline
     tenth:     OK (0.33s)
@@ -476,7 +500,7 @@ fibo n = if n < 2 then toInteger n else fibo (n - 1) + fibo (n - 2)
 
 main :: IO ()
 main = defaultMain
-  [ bgroup "fibonacci numbers"
+  [ bgroup "Fibonacci numbers"
     [ bcompare "tenth"  $ bench "fifth"     $ nf fibo  5
     ,                     bench "tenth"     $ nf fibo 10
     , bcompare "tenth"  $ bench "twentieth" $ nf fibo 20
@@ -488,7 +512,7 @@ This produces a report, comparing mean times of `fifth` and `twentieth` to `tent
 
 ```
 All
-  fibonacci numbers
+  Fibonacci numbers
     fifth:     OK (16.56s)
       121 ns ± 2.6 ns, 0.08x
     tenth:     OK (6.84s)
@@ -531,7 +555,7 @@ Build flags are a brittle subject and users do not normally need to touch them.
 
 ## Command-line options
 
-Use `--help` to list command-line options.
+Use `--help` to list all command-line options.
 
 * `-p`, `--pattern`
 

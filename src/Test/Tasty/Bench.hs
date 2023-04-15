@@ -1,7 +1,7 @@
 {- |
 Module:      Test.Tasty.Bench
 Copyright:   (c) 2021 Andrew Lelechenko
-Licence:     MIT
+License:     MIT
 
 Featherlight benchmark framework (only one file!) for performance
 measurement with API
@@ -87,7 +87,7 @@ And here is @BenchFibo.hs@:
 >
 > main :: IO ()
 > main = defaultMain
->   [ bgroup "fibonacci numbers"
+>   [ bgroup "Fibonacci numbers"
 >     [ bench "fifth"     $ nf fibo  5
 >     , bench "tenth"     $ nf fibo 10
 >     , bench "twentieth" $ nf fibo 20
@@ -105,7 +105,7 @@ Running the example above (@cabal@ @bench@ or @stack@ @bench@) results in
 the following output:
 
 > All
->   fibonacci numbers
+>   Fibonacci numbers
 >     fifth:     OK (2.13s)
 >        63 ns ± 3.4 ns
 >     tenth:     OK (1.71s)
@@ -192,7 +192,7 @@ Configuring RTS to collect GC statistics
 report memory usage:
 
 > All
->   fibonacci numbers
+>   Fibonacci numbers
 >     fifth:     OK (2.13s)
 >        63 ns ± 3.4 ns, 223 B  allocated,   0 B  copied, 2.0 MB peak memory
 >     tenth:     OK (1.71s)
@@ -279,9 +279,9 @@ another way to speed up generation of Fibonacci numbers.
     over and over again.
 
 -   If benchmark results look malformed like below, make sure that you
-    are invoking 'Test.Tasty.Bench.defaultMain' and not
-    'Test.Tasty.defaultMain' (the difference is 'consoleBenchReporter'
-    vs. 'consoleTestReporter'):
+    are invoking @Test.Tasty.Bench.@'Test.Tasty.Bench.defaultMain' and not
+    @Test.Tasty.@'Test.Tasty.defaultMain' (the difference is 'consoleBenchReporter'
+    vs. 'consoleTestReporter'):
 
     > All
     >   fibo 20:       OK (1.46s)
@@ -308,18 +308,39 @@ another way to speed up generation of Fibonacci numbers.
     [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details
     and consider using 'locateBenchmark'.
 
+-   When seeing
+
+    > This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning).
+
+    do follow the advice: abort benchmarks and pass @-t100@ or similar. Unless you are
+    benchmarking a very computationally expensive function, a single benchmark should
+    stabilize after a couple of seconds. This warning is a sign that your environment
+    is too noisy, in which case @tasty-bench@ will continue trying with exponentially
+    longer intervals, often unproductively.
+
+-   The following error can be thrown when benchmarks are built with
+    @ghc-options: -threaded@:
+
+    > Benchmarks must not be run concurrently. Please pass -j1 and/or avoid +RTS -N.
+
+    The underlying cause is that @tasty@ runs tests concurrently, which is harmful
+    for reliable performance measurements. Make sure to use @tasty-bench >= 0.3.4@
+    and invoke @Test.Tasty.Bench.@'Test.Tasty.Bench.defaultMain' and not
+    @Test.Tasty.@`Test.Tasty.defaultMain`. Note that 'localOption' ('NumThreads' 1)
+    quashes the warning, but does not eliminate the cause.
+
 === Isolating interfering benchmarks
 
 One difficulty of benchmarking in Haskell is that it is hard to isolate
 benchmarks so that they do not interfere. Changing the order of
-benchmarks or skipping some of them has an effect on heap’s layout and
+benchmarks or skipping some of them has an effect on heap's layout and
 thus affects garbage collection. This issue is well attested in
 <https://github.com/haskell/criterion/issues/166 both>
 <https://github.com/haskell/criterion/issues/60 criterion> and
 <https://github.com/vincenthz/hs-gauge/issues/2 gauge>.
 
 Usually (but not always) skipping some benchmarks speeds up remaining
-ones. That’s because once a benchmark allocated heap which for some
+ones. That's because once a benchmark allocated heap which for some
 reason was not promptly released afterwards (e. g., it forced a
 top-level thunk in an underlying library), all further benchmarks are
 slowed down by garbage collector processing this additional amount of
@@ -373,15 +394,15 @@ Firstly, run @tasty-bench@ with
 (it could be a good idea to set smaller @--stdev@, if possible):
 
 > Name,Mean (ps),2*Stdev (ps)
-> All.fibonacci numbers.fifth,48453,4060
-> All.fibonacci numbers.tenth,637152,46744
-> All.fibonacci numbers.twentieth,81369531,3342646
+> All.Fibonacci numbers.fifth,48453,4060
+> All.Fibonacci numbers.tenth,637152,46744
+> All.Fibonacci numbers.twentieth,81369531,3342646
 
 Now modify implementation and rerun benchmarks with @--baseline@ @FILE@
 key. This produces a report as follows:
 
 > All
->   fibonacci numbers
+>   Fibonacci numbers
 >     fifth:     OK (0.44s)
 >        53 ns ± 2.7 ns,  8% more than baseline
 >     tenth:     OK (0.33s)
@@ -425,7 +446,7 @@ external tools, all in the comfort of your terminal.
 >
 > main :: IO ()
 > main = defaultMain
->   [ bgroup "fibonacci numbers"
+>   [ bgroup "Fibonacci numbers"
 >     [ bcompare "tenth"  $ bench "fifth"     $ nf fibo  5
 >     ,                     bench "tenth"     $ nf fibo 10
 >     , bcompare "tenth"  $ bench "twentieth" $ nf fibo 20
@@ -436,7 +457,7 @@ This produces a report, comparing mean times of @fifth@ and @twentieth@
 to @tenth@:
 
 > All
->   fibonacci numbers
+>   Fibonacci numbers
 >     fifth:     OK (16.56s)
 >       121 ns ± 2.6 ns, 0.08x
 >     tenth:     OK (6.84s)
@@ -478,7 +499,7 @@ Build flags are a brittle subject and users do not normally need to touch them.
 
 === Command-line options
 
-Use @--help@ to list command-line options.
+Use @--help@ to list all command-line options.
 
 [@-p@, @--pattern@]:
 
@@ -617,7 +638,7 @@ module Test.Tasty.Bench
   , BaselinePath(..)
   , SvgPath(..)
   , TimeMode(..)
-  -- * Utils
+  -- * Utilities
   , locateBenchmark
   , mapLeafBenchmarks
 #else
@@ -921,7 +942,7 @@ data Measurement = Measurement
 
 data Estimate = Estimate
   { estMean  :: !Measurement
-  , estStdev :: !Word64  -- ^ stdev in picoseconds
+  , estStdev :: !Word64  -- ^ standard deviation in picoseconds
   } deriving (Show, Read)
 
 #ifdef MIN_VERSION_tasty
@@ -1144,7 +1165,7 @@ bgroup = testGroup
 -- >
 -- > main :: IO ()
 -- > main = defaultMain
--- >   [ bgroup "fibonacci numbers"
+-- >   [ bgroup "Fibonacci numbers"
 -- >     [ bcompare "tenth"  $ bench "fifth"     $ nf fibo  5
 -- >     ,                     bench "tenth"     $ nf fibo 10
 -- >     , bcompare "tenth"  $ bench "twentieth" $ nf fibo 20
@@ -1153,9 +1174,9 @@ bgroup = testGroup
 --
 -- More complex examples:
 --
--- * https://hackage.haskell.org/package/chimera-0.3.2.0/src/bench/Bench.hs
+-- * https://hackage.haskell.org/package/chimera-0.3.3.0/src/bench/Bench.hs
 -- * https://hackage.haskell.org/package/fast-digits-0.3.1.0/src/bench/Bench.hs
--- * https://hackage.haskell.org/package/unicode-data-0.3.0/src/bench/Main.hs
+-- * https://hackage.haskell.org/package/unicode-data-0.4.0.1/src/bench/Main.hs
 --
 -- @since 0.2.4
 bcompare
@@ -1181,7 +1202,7 @@ bcompare = bcompareWithin (-1/0) (1/0)
 -- @since 0.3.1
 bcompareWithin
   :: Double    -- ^ Lower bound of relative speed up.
-  -> Double    -- ^ Upper bound of relative spped up.
+  -> Double    -- ^ Upper bound of relative speed up.
   -> String    -- ^ @tasty@ pattern to locate a baseline benchmark.
   -> Benchmark -- ^ Benchmark to compare against baseline.
   -> Benchmark
@@ -2023,7 +2044,7 @@ foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP ::
 -- Real world examples:
 --
 -- * https://hackage.haskell.org/package/chimera-0.3.3.0/src/bench/Bench.hs
--- * https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
+-- * https://hackage.haskell.org/package/text-builder-linear-0.1.1/src/bench/Main.hs
 --
 -- @since 0.3.2
 mapLeafBenchmarks :: ([String] -> Benchmark -> Benchmark) -> Benchmark -> Benchmark
@@ -2049,7 +2070,7 @@ mapLeafBenchmarks processLeaf = go mempty
 -- Real world examples:
 --
 -- * https://hackage.haskell.org/package/chimera-0.3.3.0/src/bench/Bench.hs
--- * https://hackage.haskell.org/package/text-builder-linear-0.1/src/bench/Main.hs
+-- * https://hackage.haskell.org/package/text-builder-linear-0.1.1/src/bench/Main.hs
 --
 -- @since 0.3.2
 locateBenchmark :: [String] -> Expr
