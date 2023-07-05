@@ -273,10 +273,6 @@ another way to speed up generation of Fibonacci numbers.
     @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into
     @cabal@ file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
 
-    For GHC ≥ 8.10 consider switching benchmarks to a non-moving garbage
-    collector, because it decreases GC pauses and corresponding noise:
-    @+RTS@ @--nonmoving-gc@.
-
 -   Never compile benchmarks with @-fstatic-argument-transformation@,
     because it breaks a trick we use to force GHC into reevaluation of
     the same function application over and over again.
