@@ -4,11 +4,11 @@ Copyright:   (c) 2021 Andrew Lelechenko
 License:     MIT
 
 Featherlight benchmark framework (only one file!) for performance
-measurement with API
-mimicking [@criterion@](http://hackage.haskell.org/package/criterion)
-and [@gauge@](http://hackage.haskell.org/package/gauge).
-A prominent feature is built-in comparison against previous runs
-and between benchmarks.
+measurement with API mimicking
+[@criterion@](http://hackage.haskell.org/package/criterion) and
+[@gauge@](http://hackage.haskell.org/package/gauge). A prominent feature is
+built-in comparison against previous runs and between benchmarks.
+
 
 === How lightweight is it?
 
@@ -18,14 +18,15 @@ if you already depend on @tasty@ for a test suite, there is nothing else
 to install.
 
 Compare this to @criterion@ (10+ modules, 50+ dependencies) and @gauge@
-(40+ modules, depends on @basement@ and @vector@). A build on a clean machine is up to 16x
-faster than @criterion@ and up to 4x faster than @gauge@. A build without dependencies
-is up to 6x faster than @criterion@ and up to 8x faster than @gauge@.
+(40+ modules, depends on @basement@ and @vector@). A build on a clean
+machine is up to 16x faster than @criterion@ and up to 4x faster than
+@gauge@. A build without dependencies is up to 6x faster than
+@criterion@ and up to 8x faster than @gauge@.
 
-@tasty-bench@ is a native Haskell library and works everywhere, where GHC
-does. We support a full range of architectures (@i386@, @amd64@, @armhf@,
-@arm64@, @ppc64le@, @s390x@) and operating systems (Linux, Windows, macOS,
-FreeBSD, OpenBSD, NetBSD), plus any GHC from 7.0 to 9.6.
+@tasty-bench@ is a native Haskell library and works everywhere, where
+GHC does. We support a full range of architectures (@i386@, @amd64@,
+@armhf@, @arm64@, @ppc64le@, @s390x@) and operating systems (Linux,
+Windows, macOS, FreeBSD, OpenBSD, NetBSD), plus any GHC from 7.0 to 9.6.
 
 === How is it possible?
 
@@ -116,35 +117,35 @@ the following output:
 > All 3 tests passed (7.25s)
 
 The output says that, for instance, the first benchmark was repeatedly
-executed for 2.13 seconds (wall-clock time), its predicted mean CPU time was
-63 nanoseconds and means of individual samples do not often diverge from it
-further than ±3.4 nanoseconds (double standard deviation). Take standard
-deviation numbers with a grain of salt; there are lies, damned lies, and
-statistics.
+executed for 2.13 seconds (wall-clock time), its predicted mean CPU time
+was 63 nanoseconds and means of individual samples do not often diverge
+from it further than ±3.4 nanoseconds (double standard deviation). Take
+standard deviation numbers with a grain of salt; there are lies, damned
+lies, and statistics.
 
 === Wall-clock time vs. CPU time
 
-What time are we talking about?
-Both @criterion@ and @gauge@ by default report wall-clock time, which is
-affected by any other application which runs concurrently.
-Ideally benchmarks are executed on a dedicated server without any other load,
-but — let's face the truth — most of developers run benchmarks
-on a laptop with a hundred other services and a window manager, and
-watch videos while waiting for benchmarks to finish. That's the cause
-of a notorious "variance introduced by outliers: 88% (severely inflated)" warning.
+What time are we talking about? Both @criterion@ and @gauge@ by default
+report wall-clock time, which is affected by any other application which
+runs concurrently. Ideally benchmarks are executed on a dedicated server
+without any other load, but — let’s face the truth — most of developers
+run benchmarks on a laptop with a hundred other services and a window
+manager, and watch videos while waiting for benchmarks to finish. That’s
+the cause of a notorious “variance introduced by outliers: 88% (severely
+inflated)” warning.
 
 To alleviate this issue @tasty-bench@ measures CPU time by 'getCPUTime'
-instead of wall-clock time by default.
-It does not provide a perfect isolation from other processes (e. g.,
-if CPU cache is spoiled by others, populating data back from RAM
-is your burden), but is a bit more stable.
+instead of wall-clock time by default. It does not provide a perfect
+isolation from other processes (e. g., if CPU cache is spoiled by others,
+populating data back from RAM is your burden), but is a bit more stable.
 
-Caveat: this means that for multithreaded algorithms
-@tasty-bench@ reports total elapsed CPU time across all cores, while
-@criterion@ and @gauge@ print maximum of core's wall-clock time.
-It also means that by default @tasty-bench@ does not measure time spent out of process,
-e. g., calls to other executables. To work around this limitation
-use @--time-mode@ command-line option or set it locally via 'TimeMode' option.
+Caveat: this means that for multithreaded algorithms @tasty-bench@
+reports total elapsed CPU time across all cores, while @criterion@ and
+@gauge@ print maximum of core’s wall-clock time. It also means that by
+default @tasty-bench@ does not measure time spent out of process, e. g.,
+calls to other executables. To work around this limitation use
+@--time-mode@ command-line option or set it locally via 'TimeMode'
+option.
 
 === Statistical model
 
@@ -155,9 +156,9 @@ Here is a procedure used by @tasty-bench@ to measure execution time:
     \( t_{2n} \) of \( 2n \) iterations.
 3.  Find \( t \) which minimizes deviation of \( (nt, 2nt) \) from
     \( (t_n, t_{2n}) \), namely \( t \leftarrow (t_n + 2t_{2n}) / 5n \).
-4.  If deviation is small enough (see @--stdev@ below)
-    or time is running out soon (see @--timeout@ below),
-    return \( t \) as a mean execution time.
+4.  If deviation is small enough (see @--stdev@ below) or time is
+    running out soon (see @--timeout@ below), return \( t \) as a mean
+    execution time.
 5.  Otherwise set \( n \leftarrow 2n \) and jump back to Step 2.
 
 This is roughly similar to the linear regression approach which
@@ -168,13 +169,13 @@ affect overall result. This is in contrast to @criterion@, which fits
 all measurements and is biased to use more data points corresponding to
 shorter runs (it employs \( n \leftarrow 1.05n \) progression).
 
-Mean time and its deviation does not say much about the
-distribution of individual timings. E. g., imagine a computation which
-(according to a coarse system timer) takes either 0 ms or 1 ms with equal
-probability. While one would be able to establish that its mean time is 0.5 ms
-with a very small deviation, this does not imply that individual measurements
-are anywhere near 0.5 ms. Even assuming an infinite precision of a system
-timer, the distribution of individual times is not known to be
+Mean time and its deviation does not say much about the distribution of
+individual timings. E. g., imagine a computation which (according to a
+coarse system timer) takes either 0 ms or 1 ms with equal probability.
+While one would be able to establish that its mean time is 0.5 ms with a
+very small deviation, this does not imply that individual measurements
+are anywhere near 0.5 ms. Even assuming an infinite precision of a
+system timer, the distribution of individual times is not known to be
 <https://en.wikipedia.org/wiki/Normal_distribution normal>.
 
 Obligatory disclaimer: statistics is a tricky matter, there is no
@@ -186,8 +187,8 @@ indicative and comparative significance.
 
 === Memory usage
 
-Configuring RTS to collect GC statistics
-(e. g., via @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-T\'@ or
+Configuring RTS to collect GC statistics (e. g., via
+@cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-T\'@ or
 @stack@ @bench@ @--ba@ @\'+RTS@ @-T\'@) enables @tasty-bench@ to estimate and
 report memory usage:
 
@@ -202,8 +203,8 @@ report memory usage:
 >
 > All 3 tests passed (7.25s)
 
-This data is reported as per 'RTSStats' fields: 'allocated_bytes', 'copied_bytes'
-and 'max_mem_in_use_bytes'.
+This data is reported as per 'RTSStats' fields: 'allocated_bytes',
+'copied_bytes' and 'max_mem_in_use_bytes'.
 
 === Combining tests and benchmarks
 
@@ -255,9 +256,10 @@ another way to speed up generation of Fibonacci numbers.
 
 -   If benchmarks take too long, set @--timeout@ to limit execution time
     of individual benchmarks, and @tasty-bench@ will do its best to fit
-    into a given time frame. Without @--timeout@ we rerun benchmarks until
-    achieving a target precision set by @--stdev@, which in a noisy
-    environment of a modern laptop with GUI may take a lot of time.
+    into a given time frame. Without @--timeout@ we rerun benchmarks
+    until achieving a target precision set by @--stdev@, which in a
+    noisy environment of a modern laptop with GUI may take a lot of
+    time.
 
     While @criterion@ runs each benchmark at least for 5 seconds,
     @tasty-bench@ is happy to conclude earlier, if it does not
@@ -268,15 +270,16 @@ another way to speed up generation of Fibonacci numbers.
     A common source of noisiness is garbage collection. Setting a larger
     allocation area (/nursery/) is often a good idea, either via
     @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-A32m\'@ or
-    @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into @cabal@
-    file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
+    @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into
+    @cabal@ file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
 
-    For GHC ≥ 8.10 consider switching benchmarks to a non-moving garbage collector,
-    because it decreases GC pauses and corresponding noise: @+RTS@ @--nonmoving-gc@.
+    For GHC ≥ 8.10 consider switching benchmarks to a non-moving garbage
+    collector, because it decreases GC pauses and corresponding noise:
+    @+RTS@ @--nonmoving-gc@.
 
--   Never compile benchmarks with @-fstatic-argument-transformation@, because it
-    breaks a trick we use to force GHC into reevaluation of the same function application
-    over and over again.
+-   Never compile benchmarks with @-fstatic-argument-transformation@,
+    because it breaks a trick we use to force GHC into reevaluation of
+    the same function application over and over again.
 
 -   If benchmark results look malformed like below, make sure that you
     are invoking @Test.Tasty.Bench.@'Test.Tasty.Bench.defaultMain' and not
@@ -301,21 +304,22 @@ another way to speed up generation of Fibonacci numbers.
     way. This is a fundamental restriction of @tasty@ to list and filter
     benchmarks without launching missiles.
 
--   If benchmarks fail with @Test dependencies form a loop@
-    or @Test dependencies have cycles@, this is likely
-    because of 'bcompare', which compares a benchmark with itself.
-    Locating a benchmark in a global environment may be tricky, please refer to
-    [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns) for details
-    and consider using 'locateBenchmark'.
+-   If benchmarks fail with @Test dependencies form a loop@ or
+    @Test dependencies have cycles@, this is likely because of
+    'bcompare', which compares a benchmark with itself. Locating a
+    benchmark in a global environment may be tricky, please refer to
+    [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns)
+    for details and consider using 'locateBenchmark'.
 
 -   When seeing
 
     > This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning).
 
-    do follow the advice: abort benchmarks and pass @-t100@ or similar. Unless you are
-    benchmarking a very computationally expensive function, a single benchmark should
-    stabilize after a couple of seconds. This warning is a sign that your environment
-    is too noisy, in which case @tasty-bench@ will continue trying with exponentially
+    do follow the advice: abort benchmarks and pass @-t100@ or similar.
+    Unless you are benchmarking a very computationally expensive
+    function, a single benchmark should stabilize after a couple of
+    seconds. This warning is a sign that your environment is too noisy,
+    in which case @tasty-bench@ will continue trying with exponentially
     longer intervals, often unproductively.
 
 -   The following error can be thrown when benchmarks are built with
@@ -323,28 +327,28 @@ another way to speed up generation of Fibonacci numbers.
 
     > Benchmarks must not be run concurrently. Please pass -j1 and/or avoid +RTS -N.
 
-    The underlying cause is that @tasty@ runs tests concurrently, which is harmful
-    for reliable performance measurements. Make sure to use @tasty-bench >= 0.3.4@
-    and invoke @Test.Tasty.Bench.@'Test.Tasty.Bench.defaultMain' and not
-    @Test.Tasty.@`Test.Tasty.defaultMain`. Note that 'localOption' ('NumThreads' 1)
+    The underlying cause is that @tasty@ runs tests concurrently, which
+    is harmful for reliable performance measurements. Make sure to use
+    @tasty-bench >= 0.3.4@ and invoke @Test.Tasty.Bench.@'Test.Tasty.Bench.defaultMain' and
+    not @Test.Tasty.@'Test.Tasty.defaultMain'. Note that 'localOption' ('NumThreads' 1)
     quashes the warning, but does not eliminate the cause.
 
 === Isolating interfering benchmarks
 
 One difficulty of benchmarking in Haskell is that it is hard to isolate
 benchmarks so that they do not interfere. Changing the order of
-benchmarks or skipping some of them has an effect on heap's layout and
+benchmarks or skipping some of them has an effect on heap’s layout and
 thus affects garbage collection. This issue is well attested in
 <https://github.com/haskell/criterion/issues/166 both>
-<https://github.com/haskell/criterion/issues/60 criterion> and
-<https://github.com/vincenthz/hs-gauge/issues/2 gauge>.
+[@criterion@](https://github.com/haskell/criterion/issues/60) and
+[@gauge@](https://github.com/vincenthz/hs-gauge/issues/2).
 
 Usually (but not always) skipping some benchmarks speeds up remaining
-ones. That's because once a benchmark allocated heap which for some
-reason was not promptly released afterwards (e. g., it forced a
-top-level thunk in an underlying library), all further benchmarks are
-slowed down by garbage collector processing this additional amount of
-live data over and over again.
+ones. That’s because once a benchmark allocated heap which for some
+reason was not promptly released afterwards (e. g., it forced a top-level
+thunk in an underlying library), all further benchmarks are slowed down
+by garbage collector processing this additional amount of live data over
+and over again.
 
 There are several mitigation strategies. First of all, giving garbage
 collector more breathing space by @+RTS@ @-A32m@ (or more) is often good
@@ -378,20 +382,23 @@ quite recommend this approach, but if you are desperate, here is how:
 
 > cabal run -v0 all:benches -- -l | sed -e 's/[\"]/\\\\\\&/g' | while read -r name; do cabal run -v0 all:benches -- -p '$0 == "'"$name"'"'; done
 
-This assumes that there is a single benchmark suite in the project
-and that benchmark names do not contain newlines.
+This assumes that there is a single benchmark suite in the project and
+that benchmark names do not contain newlines.
 
 === Comparison against baseline
 
-One can compare benchmark results against an earlier run in an automatic way.
+One can compare benchmark results against an earlier run in an automatic
+way.
 
-When using this feature, it's especially important to compile benchmarks with
-@ghc-options:@ [@-fproc-alignment@](https://downloads.haskell.org/ghc/latest/docs/users_guide/debugging.html#ghc-flag--fproc-alignment)@=64@, otherwise results could be skewed by
-intermittent changes in cache-line alignment.
+When using this feature, it’s especially important to compile benchmarks
+with
+@ghc-options:@ [@-fproc-alignment@](https://downloads.haskell.org/ghc/latest/docs/users_guide/debugging.html#ghc-flag--fproc-alignment)@=64@,
+otherwise results could be skewed by intermittent changes in cache-line
+alignment.
 
-Firstly, run @tasty-bench@ with
-@--csv@ @FILE@ key to dump results to @FILE@ in CSV format
-(it could be a good idea to set smaller @--stdev@, if possible):
+Firstly, run @tasty-bench@ with @--csv@ @FILE@ key to dump results to
+@FILE@ in CSV format (it could be a good idea to set smaller @--stdev@,
+if possible):
 
 > Name,Mean (ps),2*Stdev (ps)
 > All.Fibonacci numbers.fifth,48453,4060
@@ -421,12 +428,17 @@ also using @--hide-successes@ to show only problematic benchmarks, or
 even [@tasty-rerun@](http://hackage.haskell.org/package/tasty-rerun)
 package to focus on rerunning failing items only.
 
-If you wish to compare two CSV reports non-interactively, here is a handy @awk@ incantation:
+If you wish to compare two CSV reports non-interactively, here is a
+handy @awk@ incantation:
 
 > awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{trueNF=NF;next}NF<trueNF{print "Benchmark names should not contain newlines";exit 1}FNR==NR{oldTime=$(NF-trueNF+2);NF-=trueNF-1;a[$0]=oldTime;next}{newTime=$(NF-trueNF+2);NF-=trueNF-1;print $0,a[$0],newTime,newTime/a[$0];gs+=log(newTime/a[$0]);gc++}END{if(gc>0)print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 
-Note that columns in CSV report are different from what @criterion@ or @gauge@
-would produce. If names do not contain commas, missing columns can be faked this way:
+A larger shell snippet to compare two @git@ commits can be found in
+@compare_benches.sh@.
+
+Note that columns in CSV report are different from what @criterion@ or
+@gauge@ would produce. If names do not contain commas, missing columns
+can be faked this way:
 
 > awk 'BEGIN{FS=",";OFS=",";print "Name,Mean,MeanLB,MeanUB,Stddev,StddevLB,StddevUB"}NR==1{trueNF=NF;next}NF<trueNF{print $0;next}{mean=$(NF-trueNF+2);stddev=$(NF-trueNF+3);NF-=trueNF-1;print $0,mean/1e12,mean/1e12,mean/1e12,stddev/2e12,stddev/2e12,stddev/2e12}'
 
@@ -436,8 +448,8 @@ To fake @gauge@ in @--csvraw@ mode use
 
 === Comparison between benchmarks
 
-You can also compare benchmarks to each other without any
-external tools, all in the comfort of your terminal.
+You can also compare benchmarks to each other without any external
+tools, all in the comfort of your terminal.
 
 > import Test.Tasty.Bench
 >
@@ -467,11 +479,12 @@ to @tenth@:
 
 To locate a baseline benchmark in a larger suite use 'locateBenchmark'.
 
-One can leverage comparisons between benchmarks to implement portable performance
-tests, expressing properties like "this algorithm must be at least twice faster
-than that one" or "this operation should not be more than thrice slower than that".
-This can be achieved with 'bcompareWithin', which takes an acceptable interval
-of performance as an argument.
+One can leverage comparisons between benchmarks to implement portable
+performance tests, expressing properties like “this algorithm must be at
+least twice faster than that one” or “this operation should not be more
+than thrice slower than that”. This can be achieved with
+'bcompareWithin', which takes an acceptable interval of performance as
+an argument.
 
 === Plotting results
 
@@ -482,20 +495,24 @@ passing @--svg@ @FILE@. Here is a sample of its output:
 
 ![Plotting](example.svg)
 
+
 === Build flags
 
-Build flags are a brittle subject and users do not normally need to touch them.
+Build flags are a brittle subject and users do not normally need to
+touch them.
 
-* If you find yourself in an environment, where @tasty@ is not available and you
-  have access to boot packages only, you can still use @tasty-bench@! Just copy
-  @Test\/Tasty\/Bench.hs@ to your project (imagine it like a header-only C library).
-  It will provide you with functions to build 'Benchmarkable' and run them manually
-  via 'measureCpuTime'. This mode of operation can be also configured
-  by disabling Cabal flag @tasty@.
+-   If you find yourself in an environment, where @tasty@ is not
+    available and you have access to boot packages only, you can still
+    use @tasty-bench@! Just copy @Test\/Tasty\/Bench.hs@ to your project
+    (imagine it like a header-only C library). It will provide you with
+    functions to build 'Benchmarkable' and run them manually via
+    'measureCpuTime'. This mode of operation can be also configured by
+    disabling Cabal flag @tasty@.
 
-* If results are amiss or oscillate wildly and adjusting @--timeout@ and @--stdev@
-  does not help, you may be interested to investigate individual timings of
-  successive runs by enabling Cabal flag @debug@. This will pipe raw data into @stderr@.
+-   If results are amiss or oscillate wildly and adjusting @--timeout@
+    and @--stdev@ does not help, you may be interested to investigate
+    individual timings of successive runs by enabling Cabal flag
+    @debug@. This will pipe raw data into @stderr@.
 
 === Command-line options
 
@@ -504,8 +521,8 @@ Use @--help@ to list all command-line options.
 [@-p@, @--pattern@]:
 
     This is a standard @tasty@ option, which allows filtering benchmarks
-    by a pattern or @awk@ expression. Please refer
-    to [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns)
+    by a pattern or @awk@ expression. Please refer to
+    [@tasty@ documentation](https://github.com/UnkindPartition/tasty#patterns)
     for details.
 
 [@-t@, @--timeout@]:
@@ -515,19 +532,19 @@ Use @--help@ to list all command-line options.
     @tasty-bench@ will make an effort to report results (even if of
     subpar quality) before timeout. Setting timeout too tight
     (insufficient for at least three iterations) will result in a
-    benchmark failure. One can adjust it locally for a group
-    of benchmarks, e. g., 'localOption' ('mkTimeout' 100000000) for 100 seconds.
+    benchmark failure. One can adjust it locally for a group of
+    benchmarks, e. g., 'localOption' ('mkTimeout' 100000000) for 100
+    seconds.
 
 [@--stdev@]:
 
     Target relative standard deviation of measurements in percents (5%
     by default). Large values correspond to fast and loose benchmarks,
-    and small ones to long and precise.
-    It can also be adjusted locally for a group of benchmarks,
-    e. g., 'localOption' ('RelStDev' 0.02).
-    If benchmarking takes far too long, consider setting @--timeout@,
-    which will interrupt benchmarks,
-    potentially before reaching the target deviation.
+    and small ones to long and precise. It can also be adjusted locally
+    for a group of benchmarks, e. g., 'localOption' ('RelStDev' 0.02). If
+    benchmarking takes far too long, consider setting @--timeout@, which
+    will interrupt benchmarks, potentially before reaching the target
+    deviation.
 
 [@--csv@]:
 
@@ -544,9 +561,9 @@ Use @--help@ to list all command-line options.
     benchmark is unacceptably slower \/ faster than baseline (see
     @--baseline@), it will be reported as failed. Can be used in
     conjunction with a standard @tasty@ option @--hide-successes@ to
-    show only problematic benchmarks.
-    Both options can be adjusted locally for a group of benchmarks,
-    e. g., 'localOption' ('FailIfSlower' 0.10).
+    show only problematic benchmarks. Both options can be adjusted
+    locally for a group of benchmarks, e. g.,
+    'localOption' ('FailIfSlower' 0.10).
 
 [@--svg@]:
 
@@ -554,7 +571,8 @@ Use @--help@ to list all command-line options.
 
 [@--time-mode@]:
 
-    Whether to measure CPU time (@cpu@, default) or wall-clock time (@wall@).
+    Whether to measure CPU time (@cpu@, default) or wall-clock time
+    (@wall@).
 
 [@+RTS@ @-T@]:
 
@@ -562,8 +580,8 @@ Use @--help@ to list all command-line options.
 
 === Custom command-line options
 
-As usual with @tasty@, it is easy to extend benchmarks with custom command-line options.
-Here is an example:
+As usual with @tasty@, it is easy to extend benchmarks with custom
+command-line options. Here is an example:
 
 > import Data.Proxy
 > import Test.Tasty.Bench
