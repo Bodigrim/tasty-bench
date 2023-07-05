@@ -151,15 +151,15 @@ option.
 
 Here is a procedure used by @tasty-bench@ to measure execution time:
 
-1.  Set \( n \leftarrow 1 \).
-2.  Measure execution time \( t_n \) of \( n \) iterations and execution time
-    \( t_{2n} \) of \( 2n \) iterations.
-3.  Find \( t \) which minimizes deviation of \( (nt, 2nt) \) from
-    \( (t_n, t_{2n}) \), namely \( t \leftarrow (t_n + 2t_{2n}) / 5n \).
+1.  Set \(n \leftarrow 1\).
+2.  Measure execution time \(t_n\) of \(n\) iterations and execution
+    time \(t_{2n}\) of \(2n\) iterations.
+3.  Find \(t\) which minimizes deviation of \((nt,2nt)\) from
+    \((t_n,t_{2n})\), namely \(t \leftarrow (t_n + 2t_{2n}) / 5n\).
 4.  If deviation is small enough (see @--stdev@ below) or time is
-    running out soon (see @--timeout@ below), return \( t \) as a mean
+    running out soon (see @--timeout@ below), return \(t\) as a mean
     execution time.
-5.  Otherwise set \( n \leftarrow 2n \) and jump back to Step 2.
+5.  Otherwise set \(n \leftarrow 2n\) and jump back to Step 2.
 
 This is roughly similar to the linear regression approach which
 @criterion@ takes, but we fit only two last points. This allows us to
@@ -167,7 +167,7 @@ simplify away all heavy-weight statistical analysis. More importantly,
 earlier measurements, which are presumably shorter and noisier, do not
 affect overall result. This is in contrast to @criterion@, which fits
 all measurements and is biased to use more data points corresponding to
-shorter runs (it employs \( n \leftarrow 1.05n \) progression).
+shorter runs (it employs \(n \leftarrow 1.05n\) progression).
 
 Mean time and its deviation does not say much about the distribution of
 individual timings. E. g., imagine a computation which (according to a

@@ -57,20 +57,6 @@ for word in getCPUTime TimeMode RTSStats allocated_bytes copied_bytes max_mem_in
   sed -i '' "s/@$word@/'$word'/g" README.haddock
 done
 
-sed -i '' 's:/n/ ← /1.05n/:\\( n \\leftarrow 1.05n \\):g' README.haddock
-sed -i '' 's:/n/ ← /2n/:\\( n \\leftarrow 2n \\):g' README.haddock
-sed -i '' 's:/t/ ← (/tₙ/ + /2t₂ₙ/) \\/ /5n/:\\( t \\leftarrow (t_n + 2t_{2n}) / 5n \\):g' README.haddock
-sed -i '' 's:(/nt/, /2nt/):\\( (nt, 2nt) \\):g' README.haddock
-sed -i '' 's:from (/tₙ/,:from:g' README.haddock
-sed -i '' 's:/t₂ₙ/),:\\( (t_n, t_{2n}) \\),:g' README.haddock
-
-sed -i '' 's:/n/ ← 1:\\( n \\leftarrow 1 \\):g' README.haddock
-sed -i '' 's:/tₙ/:\\( t_n \\):g' README.haddock
-sed -i '' 's:/n/:\\( n \\):g' README.haddock
-sed -i '' 's:/t₂ₙ/:\\( t_{2n} \\):g' README.haddock
-sed -i '' 's:/2n/:\\( 2n \\):g' README.haddock
-sed -i '' 's:/t/:\\( t \\):g' README.haddock
-
 sed -i '' "s;<<https://hackage.haskell.org/package/tasty-bench/src/example.svg Plotting>>;![Plotting](example.svg);g" README.haddock
 sed -i '' "s/^Plotting$//g" README.haddock
 
