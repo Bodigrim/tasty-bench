@@ -31,6 +31,8 @@ sed -i '' 's/@--baseline FILE@/@--baseline@ @FILE@/g' README.haddock
 sed -i '' 's/@+RTS -T@/@+RTS@ @-T@/g' README.haddock
 sed -i '' 's/@+RTS -A32m@/@+RTS@ @-A32m@/g' README.haddock
 sed -i '' 's/@+RTS --nonmoving-gc@/@+RTS@ @--nonmoving-gc@/g' README.haddock
+sed -i '' 's/@locale -a/@locale@ @-a/g' README.haddock
+sed -i '' 's/@export LANG/@export@ @LANG/g' README.haddock
 
 sed -i '' "s/@bench --benchmark-options/@bench@ @--benchmark-options/g" README.haddock
 sed -i '' "s/@bench --ba/@bench@ @--ba/g" README.haddock

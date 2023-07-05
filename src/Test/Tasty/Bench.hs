@@ -329,6 +329,25 @@ another way to speed up generation of Fibonacci numbers.
     not @Test.Tasty.@'Test.Tasty.defaultMain'. Note that 'localOption' ('NumThreads' 1)
     quashes the warning, but does not eliminate the cause.
 
+-   If benchmarks using GHC 9.4.4+ segfault on Windows, check that you
+    are not using non-moving garbage collector @--nonmoving-gc@. This is
+    likely caused by
+    <https://gitlab.haskell.org/ghc/ghc/-/issues/23003 GHC issue>.
+    Previous releases of @tasty-bench@ recommended enabling
+    @--nonmoving-gc@ to stabilise benchmarks, but it’s discouraged now.
+
+-   If you see
+
+    > <stdout>: commitBuffer: invalid argument (cannot encode character '\177')
+
+    it means that your locale does not support UTF-8. @tasty-bench@
+    makes an effort to force locale to UTF-8, but sometimes, when
+    benchmarks are a part of a larger application, it’s
+    <https://gitlab.haskell.org/ghc/ghc/-/issues/23606 impossible> to do
+    so. In such case run @locale@ @-a@ to list available locales and set a
+    UTF-8-capable one (e. g., @export@ @LANG=C.UTF-8@) before starting
+    benchmarks.
+
 === Isolating interfering benchmarks
 
 One difficulty of benchmarking in Haskell is that it is hard to isolate
