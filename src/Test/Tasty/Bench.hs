@@ -763,6 +763,8 @@ data Timeout
     String          -- ^ textual representation (e. g., @"0.2s"@)
   | NoTimeout
   deriving (Show)
+
+type Progress = ()
 #endif
 
 
@@ -1082,12 +1084,19 @@ measure timeMode n (Benchmarkable act) = do
   pure meas
 #endif
 
-measureUntil :: TimeMode -> Bool -> Timeout -> RelStDev -> Benchmarkable -> IO Estimate
-measureUntil timeMode _ _ (RelStDev targetRelStDev) b
+measureUntil
+    :: (Progress -> IO ())
+    -> TimeMode
+    -> Bool
+    -> Timeout
+    -> RelStDev
+    -> Benchmarkable
+    -> IO Estimate
+measureUntil _ timeMode _ _ (RelStDev targetRelStDev) b
   | isInfinite targetRelStDev, targetRelStDev > 0 = do
   t1 <- measure timeMode 1 b
   pure $ Estimate { estMean = t1, estStdev = 0 }
-measureUntil timeMode warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
+measureUntil yieldProgress timeMode warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
   t1 <- measure' 1 b
   go 1 t1 0
   where
@@ -1106,15 +1115,26 @@ measureUntil timeMode warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
           scale = (`quot` n)
           sumOfTs' = sumOfTs + measTime t1
 
+      let scaledEstimate = Estimate
+            { estMean  = Measurement (scale meanN) (scale allocN) (scale copiedN) maxMemN
+            , estStdev = scale stdevN }
+
+#ifdef MIN_VERSION_tasty
+      yieldProgress $ Progress
+        { progressText = prettyEstimate scaledEstimate
+        , progressPercent = 0.0
+        }
+#else
+      yieldProgress ()
+#endif
+
       case timeout of
         NoTimeout | warnIfNoTimeout, sumOfTs' + measTime t2 > 100 * 1000000000000
           -> hPutStrLn stderr "This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning)."
         _ -> pure ()
 
       if isStDevInTargetRange || isTimeoutSoon
-        then pure $ Estimate
-          { estMean  = Measurement (scale meanN) (scale allocN) (scale copiedN) maxMemN
-          , estStdev = scale stdevN }
+        then pure scaledEstimate
         else go (2 * n) t2 sumOfTs'
 
 -- | An internal routine to measure CPU execution time in seconds
@@ -1141,7 +1161,7 @@ measureCpuTimeAndStDev
         ( word64ToDouble (measTime (estMean x)) / 1e12
         , word64ToDouble (estStdev x) / 1e12
         )) .) .)
-    . measureUntil CpuTime False
+    . measureUntil (const $ pure ()) CpuTime False
 
 #ifdef MIN_VERSION_tasty
 
@@ -1154,10 +1174,10 @@ instance IsTest Benchmarkable where
     , Option (Proxy :: Proxy FailIfFaster)
     , Option (Proxy :: Proxy TimeMode)
     ]
-  run opts b = const $ case getNumThreads (lookupOption opts) of
+  run opts b yieldProgress = case getNumThreads (lookupOption opts) of
     1 -> do
       let timeMode = lookupOption opts
-      est <- measureUntil timeMode True (lookupOption opts) (lookupOption opts) b
+      est <- measureUntil yieldProgress timeMode True (lookupOption opts) (lookupOption opts) b
       let FailIfSlower ifSlower = lookupOption opts
           FailIfFaster ifFaster = lookupOption opts
       pure $ testPassed $ show (WithLoHi est (1 - ifFaster) (1 + ifSlower))
@@ -1277,7 +1297,13 @@ defaultMain' bs  = do
   installSignalHandlers
   let b = testGroup "All" bs
   opts <- parseOptions benchIngredients b
-  case tryIngredients benchIngredients (setOption (NumThreads 1) opts) b of
+  let opts' = setOption (NumThreads 1) opts
+#if MIN_VERSION_tasty(1,5,0)
+      opts'' = setOption (MinDurationToReport 1000000000000) opts'
+#else
+      opts'' = opts'
+#endif
+  case tryIngredients benchIngredients opts'' b of
     Nothing -> exitFailure
     Just act -> act >>= \x -> if x then exitSuccess else exitFailure
 
@@ -1964,10 +1990,13 @@ modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
     isSingle (Unique a) = Just a
     isSingle _ = Nothing
 
+-- | Convert a test tree to a list of test names.
 testNameSeqs :: OptionSet -> TestTree -> [Seq TestName]
 testNameSeqs = foldTestTree trivialFold
   { foldSingle = const $ const . (:[]) . Seq.singleton
-#if MIN_VERSION_tasty(1,4,0)
+#if MIN_VERSION_tasty(1,5,0)
+  , foldGroup  = const $ (. concat) . map . (<|)
+#elif MIN_VERSION_tasty(1,4,0)
   , foldGroup  = const $ map . (<|)
 #else
   , foldGroup  = map . (<|)
@@ -1978,7 +2007,11 @@ testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName
 testNamesAndDeps im = foldTestTree trivialFold
   { foldSingle = const $ const . (: []) . (, mempty)
 #if MIN_VERSION_tasty(1,4,0)
+#if MIN_VERSION_tasty(1,5,0)
+  , foldGroup  = const $ (. concat) . map . first . (++) . (++ ".")
+#else
   , foldGroup  = const $ map . first . (++) . (++ ".")
+#endif
   , foldAfter  = const foldDeps
 #else
   , foldGroup  = map . first . (++) . (++ ".")
@@ -2028,9 +2061,18 @@ postprocessResult f src = do
 
                     writeTVar oldTV (Done (f name depRes res))
                     pure (Any True, All True)
-                  -- ignoring Progress nodes, we do not report any
-                  -- it would be helpful to have instance Eq Progress
-                  _ -> pure (Any False, All False)
+#if MIN_VERSION_tasty(1,5,0)
+                  Executing newProgr -> do
+                    let updated = case old of
+                          Executing oldProgr -> oldProgr /= newProgr
+                          _ -> True
+                    when updated $
+                      writeTVar oldTV (Executing newProgr)
+                    pure (Any updated, All False)
+#else
+                  Executing{} -> pure (Any False, All False)
+#endif
+                  NotStarted -> pure (Any False, All False)
         if anyUpdated || allDone then pure allDone else retry
       adNauseam = doUpdate >>= (`unless` adNauseam)
   _ <- forkIO adNauseam
