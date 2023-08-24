@@ -1594,6 +1594,11 @@ whnfAppIO = ioFuncToBench id
 -- @Gauge.@'Gauge.env', and involves 'unsafePerformIO'. Consider using
 -- 'withResource' instead.
 --
+-- When working with a mutable environment, bear in mind that it is threaded
+-- through all iterations of a benchmark. @tasty-bench@ does not roll it back
+-- or reset, it's user's resposibility. You might have better luck
+-- with @Criterion.@'Criterion.perBatchEnv' or @Criterion.@'Criterion.perRunEnv'.
+--
 -- 'defaultMain' requires that the hierarchy of benchmarks and their names is
 -- independent of underlying 'IO' actions. While executing 'IO' inside 'bench'
 -- via 'nfIO' is fine, and reading test data from files via 'env' is also fine,
