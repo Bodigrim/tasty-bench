@@ -1,3 +1,8 @@
+# 0.3.5
+
+* Support `tasty-1.5`.
+* Report benchmarking progress.
+
 # 0.3.4
 
 * Force single-threaded execution in `defaultMain`.
