@@ -24,9 +24,10 @@ machine is up to 16x faster than @criterion@ and up to 4x faster than
 @criterion@ and up to 8x faster than @gauge@.
 
 @tasty-bench@ is a native Haskell library and works everywhere, where
-GHC does. We support a full range of architectures (@i386@, @amd64@,
-@armhf@, @arm64@, @ppc64le@, @s390x@) and operating systems (Linux,
-Windows, macOS, FreeBSD, OpenBSD, NetBSD), plus any GHC from 7.0 to 9.6.
+GHC does, including WASM. We support a full range of architectures
+(@i386@, @amd64@, @armhf@, @arm64@, @ppc64le@, @s390x@) and operating
+systems (Linux, Windows, macOS, FreeBSD, OpenBSD, NetBSD), plus any GHC
+from 7.0 to 9.6.
 
 === How is it possible?
 
