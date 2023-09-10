@@ -299,6 +299,12 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
+      - name: constraint set tasty-1.5
+        run: |
+          if [ $((HCNUMVER >= 80000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.5' all --dry-run ; fi
+          if [ $((HCNUMVER >= 80000)) -ne 0 ] ; then cabal-plan topo | sort ; fi
+          if [ $((HCNUMVER >= 80000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.5' --dependencies-only -j2 all ; fi
+          if [ $((HCNUMVER >= 80000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.5' all ; fi
       - name: constraint set tasty-1.4
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.4' all --dry-run

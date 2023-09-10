@@ -17,3 +17,7 @@ constraint-set tasty-1.3
 
 constraint-set tasty-1.4
   constraints: tasty ^>= 1.4
+
+constraint-set tasty-1.5
+  constraints: tasty ^>= 1.5
+  ghc: >= 8.0
