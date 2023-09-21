@@ -876,11 +876,9 @@ instance IsOption TimeMode where
     _ -> Nothing
   optionName = pure "time-mode"
   optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall\")"
-#if MIN_VERSION_tasty(1,3,0)
   showDefaultValue m = Just $ case m of
     CpuTime -> "cpu"
     WallTime -> "wall"
-#endif
 #endif
 
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
@@ -2002,27 +2000,20 @@ testNameSeqs = foldTestTree trivialFold
   { foldSingle = const $ const . (:[]) . Seq.singleton
 #if MIN_VERSION_tasty(1,5,0)
   , foldGroup  = const $ (. concat) . map . (<|)
-#elif MIN_VERSION_tasty(1,4,0)
-  , foldGroup  = const $ map . (<|)
 #else
-  , foldGroup  = map . (<|)
+  , foldGroup  = const $ map . (<|)
 #endif
   }
 
 testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, Unique (WithLoHi IM.Key))]
 testNamesAndDeps im = foldTestTree trivialFold
   { foldSingle = const $ const . (: []) . (, mempty)
-#if MIN_VERSION_tasty(1,4,0)
 #if MIN_VERSION_tasty(1,5,0)
   , foldGroup  = const $ (. concat) . map . first . (++) . (++ ".")
 #else
   , foldGroup  = const $ map . first . (++) . (++ ".")
 #endif
   , foldAfter  = const foldDeps
-#else
-  , foldGroup  = map . first . (++) . (++ ".")
-  , foldAfter  = foldDeps
-#endif
   }
   where
     foldDeps :: DependencyType -> Expr -> [(a, Unique (WithLoHi IM.Key))] -> [(a, Unique (WithLoHi IM.Key))]

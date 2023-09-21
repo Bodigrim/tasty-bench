@@ -311,18 +311,6 @@ jobs:
           cabal-plan topo | sort
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.4' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.4' all
-      - name: constraint set tasty-1.3
-        run: |
-          if [ $((HCNUMVER >= 70800 && HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.3' --constraint='hashable < 1.4' all --dry-run ; fi
-          if [ $((HCNUMVER >= 70800 && HCNUMVER < 90400)) -ne 0 ] ; then cabal-plan topo | sort ; fi
-          if [ $((HCNUMVER >= 70800 && HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.3' --constraint='hashable < 1.4' --dependencies-only -j2 all ; fi
-          if [ $((HCNUMVER >= 70800 && HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.3' --constraint='hashable < 1.4' all ; fi
-      - name: constraint set tasty-1.2
-        run: |
-          if [ $((HCNUMVER >= 70400 && HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.2' --constraint='hashable < 1.4' all --dry-run ; fi
-          if [ $((HCNUMVER >= 70400 && HCNUMVER < 90400)) -ne 0 ] ; then cabal-plan topo | sort ; fi
-          if [ $((HCNUMVER >= 70400 && HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.2' --constraint='hashable < 1.4' --dependencies-only -j2 all ; fi
-          if [ $((HCNUMVER >= 70400 && HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty ^>= 1.2' --constraint='hashable < 1.4' all ; fi
       - name: constraint set no-tasty-debug
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='tasty-bench -tasty +debug' all --dry-run

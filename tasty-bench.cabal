@@ -61,7 +61,7 @@ library
   if flag(tasty)
     build-depends:
       containers >= 0.4 && < 0.7,
-      tasty >= 1.2.3 && < 1.6
+      tasty >= 1.4 && < 1.6
   if impl(ghc < 7.8)
     build-depends:
       tagged >= 0.2 && < 0.9
