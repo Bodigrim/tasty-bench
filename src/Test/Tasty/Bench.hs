@@ -735,6 +735,12 @@ import Test.Tasty.Providers
 import Test.Tasty.Runners
 #endif
 
+#if MIN_VERSION_base(4,11,0)
+import GHC.Clock (getMonotonicTime)
+#else
+import Data.Time.Clock.POSIX (getPOSIXTime)
+#endif
+
 #if defined(mingw32_HOST_OS)
 import Data.Word (Word32)
 #endif
@@ -798,10 +804,8 @@ newtype RelStDev = RelStDev Double
 -- @since 0.3.2
 data TimeMode = CpuTime
   -- ^ Measure CPU time.
-#ifdef MIN_VERSION_tasty
   | WallTime
   -- ^ Measure wall-clock time.
-#endif
   deriving (Typeable)
 
 #ifdef MIN_VERSION_tasty
@@ -1046,12 +1050,17 @@ getAllocsAndCopied = do
     pure (0, 0, 0)
 #endif
 
+getWallTimeSecs :: IO Double
+#if MIN_VERSION_base(4,11,0)
+getWallTimeSecs = getMonotonicTime
+#else
+getWallTimeSecs = realToFrac <$> getPOSIXTime
+#endif
+
 getTimePicoSecs :: TimeMode -> IO Word64
 getTimePicoSecs timeMode = case timeMode of
   CpuTime -> fromInteger <$> getCPUTime
-#ifdef MIN_VERSION_tasty
-  WallTime -> round . (1e12 *) <$> getTime
-#endif
+  WallTime -> round . (1e12 *) <$> getWallTimeSecs
 
 measure :: TimeMode -> Word64 -> Benchmarkable -> IO Measurement
 measure timeMode n (Benchmarkable act) = do
