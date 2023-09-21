@@ -564,10 +564,6 @@ Build flags are a brittle subject and users do not normally need to touch them.
   via `measureCpuTime`. This mode of operation can be also configured
   by disabling Cabal flag `tasty`.
 
-* If results are amiss or oscillate wildly and adjusting `--timeout` and `--stdev`
-  does not help, you may be interested to investigate individual timings of
-  successive runs by enabling Cabal flag `debug`. This will pipe raw data into `stderr`.
-
 ## Command-line options
 
 Use `--help` to list all command-line options.

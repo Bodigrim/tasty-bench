@@ -38,12 +38,6 @@ flag tasty
     When disabled, reduces API to functions independent of @tasty@: combinators
     to construct @Benchmarkable@ and @measureCpuTime@.
 
-flag debug
-  default: False
-  manual: True
-  description:
-    Emit ongoing diagnostic information for benchmarks.
-
 library
   exposed-modules:  Test.Tasty.Bench
   hs-source-dirs:   src
@@ -65,9 +59,6 @@ library
   if impl(ghc < 7.8)
     build-depends:
       tagged >= 0.2 && < 0.9
-
-  if flag(debug)
-    cpp-options: -DDEBUG
 
 benchmark bench-fibo
   default-language: Haskell2010

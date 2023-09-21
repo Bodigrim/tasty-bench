@@ -525,11 +525,6 @@ touch them.
     'measureCpuTime'. This mode of operation can be also configured by
     disabling Cabal flag @tasty@.
 
--   If results are amiss or oscillate wildly and adjusting @--timeout@
-    and @--stdev@ does not help, you may be interested to investigate
-    individual timings of successive runs by enabling Cabal flag
-    @debug@. This will pipe raw data into @stderr@.
-
 === Command-line options
 
 Use @--help@ to list all command-line options.
@@ -711,10 +706,6 @@ import System.IO
 import System.IO.Unsafe
 import System.Mem
 import Text.Printf
-
-#ifdef DEBUG
-import Debug.Trace
-#endif
 
 #ifdef MIN_VERSION_tasty
 #if !MIN_VERSION_base(4,8,0)
@@ -1077,11 +1068,7 @@ measure timeMode n (Benchmarkable act) = do
         , measCopied = endCopied - startCopied
         , measMaxMem = max endMaxMemInUse startMaxMemInUse
         }
-#ifdef DEBUG
-  pure $ trace (show n ++ (if n == 1 then " iteration gives " else " iterations give ") ++ show meas) meas
-#else
   pure meas
-#endif
 
 measureUntil
     :: (Progress -> IO ())
