@@ -1086,16 +1086,15 @@ measure timeMode n (Benchmarkable act) = do
 measureUntil
     :: (Progress -> IO ())
     -> TimeMode
-    -> Bool
     -> Timeout
     -> RelStDev
     -> Benchmarkable
     -> IO Estimate
-measureUntil _ timeMode _ _ (RelStDev targetRelStDev) b
+measureUntil _ timeMode _ (RelStDev targetRelStDev) b
   | isInfinite targetRelStDev, targetRelStDev > 0 = do
   t1 <- measure timeMode 1 b
   pure $ Estimate { estMean = t1, estStdev = 0 }
-measureUntil yieldProgress timeMode warnIfNoTimeout timeout (RelStDev targetRelStDev) b = do
+measureUntil yieldProgress timeMode timeout (RelStDev targetRelStDev) b = do
   t1 <- measure' 1 b
   go 1 t1 0
   where
@@ -1127,11 +1126,6 @@ measureUntil yieldProgress timeMode warnIfNoTimeout timeout (RelStDev targetRelS
       yieldProgress ()
 #endif
 
-      case timeout of
-        NoTimeout | warnIfNoTimeout, sumOfTs' + measTime t2 > 100 * 1000000000000
-          -> hPutStrLn stderr "This benchmark takes more than 100 seconds. Consider setting --timeout, if this is unexpected (or to silence this warning)."
-        _ -> pure ()
-
       if isStDevInTargetRange || isTimeoutSoon
         then pure scaledEstimate
         else go (2 * n) t2 sumOfTs'
@@ -1160,7 +1154,7 @@ measureCpuTimeAndStDev
         ( word64ToDouble (measTime (estMean x)) / 1e12
         , word64ToDouble (estStdev x) / 1e12
         )) .) .)
-    . measureUntil (const $ pure ()) CpuTime False
+    . measureUntil (const $ pure ()) CpuTime
 
 #ifdef MIN_VERSION_tasty
 
@@ -1176,7 +1170,7 @@ instance IsTest Benchmarkable where
   run opts b yieldProgress = case getNumThreads (lookupOption opts) of
     1 -> do
       let timeMode = lookupOption opts
-      est <- measureUntil yieldProgress timeMode True (lookupOption opts) (lookupOption opts) b
+      est <- measureUntil yieldProgress timeMode (lookupOption opts) (lookupOption opts) b
       let FailIfSlower ifSlower = lookupOption opts
           FailIfFaster ifFaster = lookupOption opts
       pure $ testPassed $ show (WithLoHi est (1 - ifFaster) (1 + ifSlower))
