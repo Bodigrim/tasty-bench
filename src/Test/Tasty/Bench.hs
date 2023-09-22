@@ -799,7 +799,15 @@ newtype RelStDev = RelStDev Double
 -- > import Test.Tasty (localOption)
 -- > localOption WallTime (bgroup [...])
 --
--- section of your cabal file.
+-- You can measure both times and report their ratio with the following gadget:
+--
+-- @
+-- bgroup \"Foo\"
+--   [ localOption WallTime $ bench \"WallTime\" foo
+--   , bcompare \"Foo.WallTime\"
+--   $ localOption CpuTime  $ bench \"CPUTime\"  foo
+--   ]
+-- @
 --
 -- @since 0.3.2
 data TimeMode = CpuTime
