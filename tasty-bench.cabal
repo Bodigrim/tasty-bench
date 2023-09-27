@@ -54,7 +54,7 @@ library
     ghc-prim < 0.12
   if flag(tasty)
     build-depends:
-      containers >= 0.4 && < 0.7,
+      containers >= 0.4 && < 0.8,
       tasty >= 1.4 && < 1.6
   if impl(ghc < 7.8)
     build-depends:
