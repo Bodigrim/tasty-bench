@@ -27,7 +27,7 @@ machine is up to 16x faster than @criterion@ and up to 4x faster than
 GHC does, including WASM. We support a full range of architectures
 (@i386@, @amd64@, @armhf@, @arm64@, @ppc64le@, @s390x@) and operating
 systems (Linux, Windows, macOS, FreeBSD, OpenBSD, NetBSD), plus any GHC
-from 7.0 to 9.6.
+from 7.0 to 9.8.
 
 === How is it possible?
 
