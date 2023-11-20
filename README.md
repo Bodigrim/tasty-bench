@@ -330,6 +330,10 @@ look for another way to speed up generation of Fibonacci numbers.
   or affect their hierarchy in other way. This is a fundamental restriction of `tasty`
   to list and filter benchmarks without launching missiles.
 
+  Strict pattern-matching on resource is also prohibited. For instance,
+  if it is a tuple, the second argument of `env` should use a lazy pattern match
+  `\~(a, b) -> ...`
+
 * If benchmarks fail with `Test dependencies form a loop`
   or `Test dependencies have cycles`, this is likely
   because of `bcompare`, which compares a benchmark with itself.

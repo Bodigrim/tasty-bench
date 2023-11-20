@@ -1,3 +1,13 @@
+# 0.4
+
+* Switch `nf`, `nfIO` and `nfAppIO` to evaluate outputs to a normal form
+  with `rnf` instead of `force`. It means that parts of the output, which have
+  already been forced, can be garbage collected early, without waiting for
+  the entire output to be allocated at the same time. This decreases
+  benchmarking overhead in many scenarios and brings the behaviour in line
+  with `criterion`. See [#39](https://github.com/Bodigrim/tasty-bench/issues/39)
+  for discussion.
+
 # 0.3.5
 
 * Support `tasty-1.5`.

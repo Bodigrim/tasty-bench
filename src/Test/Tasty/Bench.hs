@@ -301,6 +301,10 @@ another way to speed up generation of Fibonacci numbers.
     way. This is a fundamental restriction of @tasty@ to list and filter
     benchmarks without launching missiles.
 
+    Strict pattern-matching on resource is also prohibited. For
+    instance, if it is a tuple, the second argument of 'env' should use
+    a lazy pattern match @\\~(a, b) -> ...@
+
 -   If benchmarks fail with @Test dependencies form a loop@ or
     @Test dependencies have cycles@, this is likely because of
     'bcompare', which compares a benchmark with itself. Locating a
@@ -680,7 +684,7 @@ import Prelude hiding (Int, Integer)
 import qualified Prelude
 import Control.Applicative
 import Control.Arrow (first, second)
-import Control.DeepSeq (NFData, force)
+import Control.DeepSeq (NFData, force, rnf)
 import Control.Exception (bracket, evaluate)
 import Control.Monad (void, unless, guard, (>=>), when)
 import Data.Data (Typeable)
@@ -1342,7 +1346,7 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
--- a normal form (by means of 'force', not 'Control.DeepSeq.rnf')
+-- a normal form (by means of 'Control.DeepSeq.rnf', not 'Control.DeepSeq.force')
 -- of an application of @f@ to @x@.
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
@@ -1375,9 +1379,9 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
 -- especially when 'NFData' instance is badly written,
 -- this traversal may take non-negligible time and affect results.
 --
--- 'nf' @f@ is equivalent to 'whnf' ('force' '.' @f@), but not to
--- 'whnf' ('Control.DeepSeq.rnf' '.' @f@). The former retains the result
--- in memory until it is fully evaluated, while the latter allows
+-- 'nf' @f@ is equivalent to 'whnf' ('Control.DeepSeq.rnf' '.' @f@), but not to
+-- 'whnf' ('Control.DeepSeq.force' '.' @f@). The latter retains the result
+-- in memory until it is fully evaluated, while the former allows
 -- evaluated parts of the result to be garbage-collected immediately.
 --
 -- For users of @{-# LANGUAGE LinearTypes #-}@: if @f@ is a linear function,
@@ -1389,7 +1393,7 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
 --
 -- @since 0.1
 nf :: NFData b => (a -> b) -> a -> Benchmarkable
-nf = funcToBench force
+nf = funcToBench rnf
 {-# INLINE nf #-}
 
 -- | 'whnf' @f@ @x@ measures time to compute
@@ -1434,7 +1438,8 @@ ioToBench frc act = Benchmarkable go
 {-# INLINE ioToBench #-}
 
 -- | 'nfIO' @x@ measures time to evaluate side-effects of @x@
--- and compute its normal form (by means of 'force', not 'Control.DeepSeq.rnf').
+-- and compute its normal form
+-- (by means of 'Control.DeepSeq.rnf', not 'Control.DeepSeq.force').
 --
 -- Pure subexpression of an effectful computation @x@
 -- may be evaluated only once and get cached.
@@ -1455,7 +1460,7 @@ ioToBench frc act = Benchmarkable go
 --
 -- @since 0.1
 nfIO :: NFData a => IO a -> Benchmarkable
-nfIO = ioToBench force
+nfIO = ioToBench rnf
 {-# INLINE nfIO #-}
 
 -- | 'whnfIO' @x@ measures time to evaluate side-effects of @x@
@@ -1496,7 +1501,8 @@ ioFuncToBench frc = (Benchmarkable .) . go
 
 -- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of
 -- an application of @f@ to @x@
--- and compute its normal form (by means of 'force', not 'Control.DeepSeq.rnf').
+-- and compute its normal form
+-- (by means of 'Control.DeepSeq.rnf', not 'Control.DeepSeq.force').
 -- This does not include time to evaluate @f@ or @x@ themselves.
 -- Ideally @x@ should be a primitive data type like 'Data.Int.Int'.
 --
@@ -1521,7 +1527,7 @@ ioFuncToBench frc = (Benchmarkable .) . go
 --
 -- @since 0.1
 nfAppIO :: NFData b => (a -> IO b) -> a -> Benchmarkable
-nfAppIO = ioFuncToBench force
+nfAppIO = ioFuncToBench rnf
 {-# INLINE nfAppIO #-}
 
 -- | 'whnfAppIO' @f@ @x@ measures time to evaluate side-effects of
@@ -1578,12 +1584,9 @@ whnfAppIO = ioFuncToBench id
 --
 -- use
 --
--- > import Control.DeepSeq (force)
--- > import Control.Exception (evaluate)
--- >
 -- > main :: IO ()
 -- > main = defaultMain
--- >   [ env (evaluate (force (replicate 1000000 'a'))) $ \largeData ->
+-- >   [ env (pure (replicate 1000000 'a')) $ \largeData ->
 -- >     bench "large" $ nf length largeData, ... ]
 --
 -- @Test.Tasty.Bench.@'env' is provided only for the sake of
@@ -1603,6 +1606,10 @@ whnfAppIO = ioFuncToBench id
 -- will throw a rather cryptic error message:
 --
 -- > Unhandled resource. Probably a bug in the runner you're using.
+--
+-- Strict pattern-matching on resource is also prohibited. For
+-- instance, if it is a tuple, the second argument of 'env' should use
+-- a lazy pattern match @\\~(a, b) -> ...@
 --
 -- @since 0.2
 env :: NFData env => IO env -> (env -> Benchmark) -> Benchmark
