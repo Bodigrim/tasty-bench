@@ -7,6 +7,7 @@
   benchmarking overhead in many scenarios and brings the behaviour in line
   with `criterion`. See [#39](https://github.com/Bodigrim/tasty-bench/issues/39)
   for discussion.
+* Drop support of `tasty < 1.4`.
 
 # 0.3.5
 

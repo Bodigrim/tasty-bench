@@ -27,7 +27,7 @@ machine is up to 16x faster than @criterion@ and up to 4x faster than
 GHC does, including WASM. We support a full range of architectures
 (@i386@, @amd64@, @armhf@, @arm64@, @ppc64le@, @s390x@) and operating
 systems (Linux, Windows, macOS, FreeBSD, OpenBSD, NetBSD), plus any GHC
-from 7.0 to 9.8.
+from 7.0 to 9.10.
 
 === How is it possible?
 
@@ -1442,7 +1442,11 @@ ioToBench frc act = Benchmarkable go
 -- (by means of 'Control.DeepSeq.rnf', not 'Control.DeepSeq.force').
 --
 -- Pure subexpression of an effectful computation @x@
--- may be evaluated only once and get cached.
+-- may be evaluated only once and get cached. For example,
+-- GHC is likely to float @x@ out of 'nfIO' ('pure' @x@) and
+-- evaluate in only once, which leaves 'nfIO' to measure 'pure' only
+-- with results in nanosecond range.
+--
 -- To avoid surprising results it is usually preferable
 -- to use 'nfAppIO' instead.
 --
@@ -1467,7 +1471,11 @@ nfIO = ioToBench rnf
 -- and compute its weak head normal form.
 --
 -- Pure subexpression of an effectful computation @x@
--- may be evaluated only once and get cached.
+-- may be evaluated only once and get cached. For example,
+-- GHC is likely to float @x@ out of 'whnfIO' ('pure' @x@) and
+-- evaluate in only once, which leaves 'whnfIO' to measure 'pure' only
+-- with results in nanosecond range.
+--
 -- To avoid surprising results it is usually preferable
 -- to use 'whnfAppIO' instead.
 --
