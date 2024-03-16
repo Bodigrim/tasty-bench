@@ -13,17 +13,17 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [windows-latest, macOS-latest]
+        os: [windows-latest, macOS-latest, macOS-14]
         ghc: ['latest']
     steps:
-    - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2
+    - uses: actions/checkout@v4
+    - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache cabal stuff
       with:
         path: |
@@ -54,8 +54,8 @@ jobs:
       matrix:
         arch: ['s390x', 'ppc64le', 'armv7', 'aarch64']
     steps:
-    - uses: actions/checkout@v3
-    - uses: uraimo/run-on-arch-action@v2.5.0
+    - uses: actions/checkout@v4
+    - uses: uraimo/run-on-arch-action@v2.7.1
       with:
         arch: ${{ matrix.arch }}
         distro: ubuntu_rolling
@@ -98,9 +98,9 @@ jobs:
         curl -L https://gitlab.haskell.org/ghc/ghc-wasm-meta/-/archive/$GHC_WASM_META_REV/ghc-wasm-meta-master.tar.gz | tar xz --strip-components=1
         ./setup.sh
         ~/.ghc-wasm/add_to_github_path.sh
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.ghc-wasm/.cabal/store
