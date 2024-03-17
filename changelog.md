@@ -9,6 +9,8 @@
   for discussion.
 * Drop support of `tasty < 1.4`.
 * Make `IO` benchmarks immune to `-fspec-constr-count` limit.
+* Decomission `debug` build flag.
+* Decomission warning when `--timeout` is absent.
 
 # 0.3.5
 
