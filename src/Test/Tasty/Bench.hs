@@ -1364,6 +1364,10 @@ funcToBench frc = (Benchmarkable .) . funcToBenchLoop SPEC
 -- on garbage collector. Also no list fusion will happen.
 -- A better approach is 'nf' (@\\n@ @->@ 'sum' @[1..n]@) @1000000@.
 --
+-- It is preferable that the return type of the function under measurement
+-- is inhabited enough to depend genuinely on all computations and is not simply @b ~ ()@.
+-- Otherwise GHC might get aggressive and optimise the payload away.
+--
 -- If you are measuring an inlinable function,
 -- it is prudent to ensure that its invocation is fully saturated,
 -- otherwise inlining will not happen. That's why one can often
