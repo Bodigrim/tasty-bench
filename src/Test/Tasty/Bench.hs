@@ -1317,7 +1317,7 @@ benchIngredients = [listingTests, composeReporters consoleBenchReporter (compose
 #endif
 
 funcToBench :: forall a b c. (b -> c) -> (a -> b) -> a -> Benchmarkable
-funcToBench frc = (Benchmarkable .) . benchLoop SPEC
+funcToBench frc = (Benchmarkable .) . funcToBenchLoop SPEC
   where
     -- Here we rely on the fact that GHC (unless spurred by
     -- -fstatic-argument-transformation) is not smart enough:
@@ -1328,21 +1328,21 @@ funcToBench frc = (Benchmarkable .) . benchLoop SPEC
     --
     -- For perspective, gauge and criterion < 1.4 mark similar functions as INLINE,
     -- while criterion >= 1.4 switches to NOINLINE.
-    -- If we mark `benchLoop` NOINLINE then benchmark results are slightly larger
+    -- If we mark `funcToBenchLoop` NOINLINE then benchmark results are slightly larger
     -- (noticeable in bench-fibo), because the loop body is slightly bigger,
     -- since GHC does not unbox numbers or inline `Eq @Word64` dictionary.
     --
-    -- This function is called `benchLoop` instead of, say, `go`,
+    -- This function is called `funcToBenchLoop` instead of, say, `go`,
     -- so it is easier to spot in Core dumps.
     --
     -- Forcing SpecConst optimization with SPEC makes the behaviour of benchmarks
     -- independent of -fspec-constr-count.
-    benchLoop :: SPEC -> (a -> b) -> a -> Word64 -> IO ()
-    benchLoop !_ f x n
+    funcToBenchLoop :: SPEC -> (a -> b) -> a -> Word64 -> IO ()
+    funcToBenchLoop !_ f x n
       | n == 0    = pure ()
       | otherwise = do
         _ <- evaluate (frc (f x))
-        benchLoop SPEC f x (n - 1)
+        funcToBenchLoop SPEC f x (n - 1)
 {-# INLINE funcToBench #-}
 
 -- | 'nf' @f@ @x@ measures time to compute
@@ -1427,14 +1427,15 @@ whnf = funcToBench id
 {-# INLINE whnf #-}
 
 ioToBench :: (b -> c) -> IO b -> Benchmarkable
-ioToBench frc act = Benchmarkable go
+ioToBench frc act = Benchmarkable (ioToBenchLoop SPEC)
   where
-    go n
+    ioToBenchLoop :: SPEC -> Word64 -> IO ()
+    ioToBenchLoop !_ n
       | n == 0    = pure ()
       | otherwise = do
         val <- act
         _ <- evaluate (frc val)
-        go (n - 1)
+        ioToBenchLoop SPEC (n - 1)
 {-# INLINE ioToBench #-}
 
 -- | 'nfIO' @x@ measures time to evaluate side-effects of @x@
@@ -1496,15 +1497,16 @@ whnfIO :: IO a -> Benchmarkable
 whnfIO = ioToBench id
 {-# INLINE whnfIO #-}
 
-ioFuncToBench :: (b -> c) -> (a -> IO b) -> a -> Benchmarkable
-ioFuncToBench frc = (Benchmarkable .) . go
+ioFuncToBench :: forall a b c. (b -> c) -> (a -> IO b) -> a -> Benchmarkable
+ioFuncToBench frc = (Benchmarkable .) . ioFuncToBenchLoop SPEC
   where
-    go f x n
+    ioFuncToBenchLoop :: SPEC -> (a -> IO b) -> a -> Word64 -> IO ()
+    ioFuncToBenchLoop !_ f x n
       | n == 0    = pure ()
       | otherwise = do
         val <- f x
         _ <- evaluate (frc val)
-        go f x (n - 1)
+        ioFuncToBenchLoop SPEC f x (n - 1)
 {-# INLINE ioFuncToBench #-}
 
 -- | 'nfAppIO' @f@ @x@ measures time to evaluate side-effects of
