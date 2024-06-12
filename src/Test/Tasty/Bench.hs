@@ -1603,6 +1603,10 @@ whnfAppIO = ioFuncToBench id
 -- >   [ env (pure (replicate 1000000 'a')) $ \largeData ->
 -- >     bench "large" $ nf length largeData, ... ]
 --
+-- Even with 'env', it's advisable to store input data in as few heap objects
+-- as possible. 'Data.Array.ByteArray.ByteArray' (ideally pinned)
+-- or unboxed @Vector@ are good, boxed arrays are worse, lists and trees are bad.
+--
 -- @Test.Tasty.Bench.@'env' is provided only for the sake of
 -- compatibility with @Criterion.@'Criterion.env' and
 -- @Gauge.@'Gauge.env', and involves 'unsafePerformIO'. Consider using
