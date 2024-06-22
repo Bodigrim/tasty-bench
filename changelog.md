@@ -12,6 +12,7 @@
 * Decomission `debug` build flag.
 * Decomission warning when `--timeout` is absent.
 * Add `instance Eq RelStDev` and `instance Ord RelStDev`.
+* Add `unRelStDev :: RelStDev -> Double`.
 
 # 0.3.5
 

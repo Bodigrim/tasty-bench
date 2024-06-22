@@ -788,7 +788,7 @@ type Progress = ()
 -- only once, use command-line option @--stdev@ @Infinity@.
 --
 -- @since 0.2
-newtype RelStDev = RelStDev Double
+newtype RelStDev = RelStDev { unRelStDev :: Double }
   deriving (Eq, Ord, Show, Read, Typeable)
 
 -- | Whether to measure CPU time or wall-clock time.
