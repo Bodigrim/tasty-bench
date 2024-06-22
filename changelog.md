@@ -11,6 +11,7 @@
 * Make `IO` benchmarks immune to `-fspec-constr-count` limit.
 * Decomission `debug` build flag.
 * Decomission warning when `--timeout` is absent.
+* Add `instance Eq RelStDev` and `instance Ord RelStDev`.
 
 # 0.3.5
 

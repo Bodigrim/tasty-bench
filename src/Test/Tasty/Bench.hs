@@ -789,7 +789,7 @@ type Progress = ()
 --
 -- @since 0.2
 newtype RelStDev = RelStDev Double
-  deriving (Show, Read, Typeable)
+  deriving (Eq, Ord, Show, Read, Typeable)
 
 -- | Whether to measure CPU time or wall-clock time.
 -- Normally 'CpuTime' is a better option (and default),
