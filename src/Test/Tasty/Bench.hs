@@ -451,7 +451,7 @@ package to focus on rerunning failing items only.
 If you wish to compare two CSV reports non-interactively, here is a
 handy @awk@ incantation:
 
-> awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{trueNF=NF;next}NF<trueNF{print "Benchmark names should not contain newlines";exit 1}FNR==NR{oldTime=$(NF-trueNF+2);NF-=trueNF-1;a[$0]=oldTime;next}{newTime=$(NF-trueNF+2);NF-=trueNF-1;print $0,a[$0],newTime,newTime/a[$0];gs+=log(newTime/a[$0]);gc++}END{if(gc>0)print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
+> awk 'BEGIN{FS=",";OFS=",";print "Name,Old,New,Ratio"}FNR==1{trueNF=NF;next}NF<trueNF{print "Benchmark names should not contain newlines";exit 1}FNR==NR{oldTime=$(NF-trueNF+2);NF-=trueNF-1;a[$0]=oldTime;next}{newTime=$(NF-trueNF+2);NF-=trueNF-1;if(a[$0]){print $0,a[$0],newTime,newTime/a[$0];gs+=log(newTime/a[$0]);gc++}}END{if(gc>0)print "Geometric mean,,",exp(gs/gc)}' old.csv new.csv
 
 A larger shell snippet to compare two @git@ commits can be found in
 @compare_benches.sh@.
