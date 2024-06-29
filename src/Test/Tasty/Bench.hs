@@ -631,6 +631,7 @@ command-line options. Here is an example:
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -788,8 +789,22 @@ type Progress = ()
 -- only once, use command-line option @--stdev@ @Infinity@.
 --
 -- @since 0.2
-newtype RelStDev = RelStDev { unRelStDev :: Double }
-  deriving (Eq, Ord, Show, Read, Typeable)
+newtype RelStDev = RelStDev
+  { unRelStDev :: Double
+  -- ^ @since 0.4
+  } deriving
+  ( Eq
+  -- ^ @since 0.4
+  , Ord
+  -- ^ @since 0.4
+  , Show
+  , Read
+  , Num
+  -- ^ @since 0.4
+  , Fractional
+  -- ^ @since 0.4
+  , Typeable
+  )
 
 -- | Whether to measure CPU time or wall-clock time.
 -- Normally 'CpuTime' is a better option (and default),
@@ -840,7 +855,19 @@ instance IsOption RelStDev where
 --
 -- @since 0.2
 newtype FailIfSlower = FailIfSlower Double
-  deriving (Show, Read, Typeable)
+  deriving
+  ( Eq
+  -- ^ @since 0.4
+  , Ord
+  -- ^ @since 0.4
+  , Show
+  , Read
+  , Num
+  -- ^ @since 0.4
+  , Fractional
+  -- ^ @since 0.4
+  , Typeable
+  )
 
 instance IsOption FailIfSlower where
   defaultValue = FailIfSlower (1.0 / 0.0)
@@ -861,7 +888,19 @@ instance IsOption FailIfSlower where
 --
 -- @since 0.2
 newtype FailIfFaster = FailIfFaster Double
-  deriving (Show, Read, Typeable)
+  deriving
+  ( Eq
+  -- ^ @since 0.4
+  , Ord
+  -- ^ @since 0.4
+  , Show
+  , Read
+  , Num
+  -- ^ @since 0.4
+  , Fractional
+  -- ^ @since 0.4
+  , Typeable
+  )
 
 instance IsOption FailIfFaster where
   defaultValue = FailIfFaster (1.0 / 0.0)
@@ -1675,7 +1714,13 @@ envWithCleanup res fin f = withResource
 --
 -- @since 0.3
 newtype CsvPath = CsvPath FilePath
-  deriving (Typeable)
+  deriving
+  ( Eq
+  -- ^ @since 0.4
+  , Ord
+  -- ^ @since 0.4
+  , Typeable
+  )
 
 instance IsOption (Maybe CsvPath) where
   defaultValue = Nothing
@@ -1748,7 +1793,13 @@ encodeCsv xs
 --
 -- @since 0.3
 newtype SvgPath = SvgPath FilePath
-  deriving (Typeable)
+  deriving
+  ( Eq
+  -- ^ @since 0.4
+  , Ord
+  -- ^ @since 0.4
+  , Typeable
+  )
 
 instance IsOption (Maybe SvgPath) where
   defaultValue = Nothing
@@ -1881,7 +1932,13 @@ encodeSvg (x : xs) = x : encodeSvg xs
 --
 -- @since 0.3
 newtype BaselinePath = BaselinePath FilePath
-  deriving (Typeable)
+  deriving
+  ( Eq
+  -- ^ @since 0.4
+  , Ord
+  -- ^ @since 0.4
+  , Typeable
+  )
 
 instance IsOption (Maybe BaselinePath) where
   defaultValue = Nothing
