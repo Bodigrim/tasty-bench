@@ -310,7 +310,7 @@ look for another way to speed up generation of Fibonacci numbers.
   ```
   All
     fibo 20:       OK (1.46s)
-      Response {respEstimate = Estimate {estMean = Measurement {measTime = 87496728, measAllocs = 0, measCopied = 0}, estStdev = 694487}, respIfSlower = FailIfSlower Infinity, respIfFaster = FailIfFaster Infinity}
+      WithLoHi (Estimate {estMean = Measurement {measTime = 41529118775, measAllocs = 0, measCopied = 0, measMaxMem = 0}, estStdev = 1595055320}) (-Infinity) Infinity
   ```
 
 * If benchmarks fail with an error message
