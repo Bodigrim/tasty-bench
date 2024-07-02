@@ -227,8 +227,26 @@ All
 All 3 tests passed (7.25s)
 ```
 
-This data is reported as per `RTSStats` fields: `allocated_bytes`, `copied_bytes`
-and `max_mem_in_use_bytes`.
+This data is reported as per [`GHC.Stats.RTSStats`](https://hackage.haskell.org/package/base/docs/GHC-Stats.html#t:RTSStats) fields:
+
+* `allocated_bytes`
+
+  Total size of data ever allocated since the start
+  of the benchmark iteration. Even if data was immediately
+  garbage collected and freed, it still counts.
+
+* `copied_bytes`
+
+  Total size of data ever copied by GC (because it was alive and kicking)
+  since the start of the benchmark iteration. Note that zero bytes often mean
+  that the benchmark was too short to trigger GC at all.
+
+* `max_mem_in_use_bytes`
+
+  Peak size of live data since the very start of the process.
+  This is a global metric, it cumulatively grows and does not say much
+  about individual benchmarks, but rather characterizes heap
+  environment in which they are executed.
 
 ## Combining tests and benchmarks
 
