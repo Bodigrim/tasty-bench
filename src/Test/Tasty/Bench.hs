@@ -27,7 +27,7 @@ machine is up to 16x faster than @criterion@ and up to 4x faster than
 GHC does, including WASM. We support a full range of architectures
 (@i386@, @amd64@, @armhf@, @arm64@, @ppc64le@, @s390x@) and operating
 systems (Linux, Windows, macOS, FreeBSD, OpenBSD, NetBSD), plus any GHC
-from 7.0 to 9.10.
+from 8.0 to 9.10 (and earlier releases stretch back to GHC 7.0).
 
 === How is it possible?
 
@@ -720,12 +720,9 @@ import Data.Proxy
 import Data.Traversable (forM)
 import Data.Word (Word64)
 import GHC.Conc
-#if MIN_VERSION_base(4,5,0)
 import GHC.IO.Encoding
-#endif
-#if MIN_VERSION_base(4,6,0)
 import GHC.Stats
-#endif
+import GHC.Types (SPEC(..))
 import System.CPUTime
 import System.Exit
 import System.IO
@@ -734,17 +731,8 @@ import System.Mem
 import Text.Printf
 
 #ifdef MIN_VERSION_tasty
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
-#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..))
-#endif
-#if MIN_VERSION_containers(0,5,0)
 import qualified Data.IntMap.Strict as IM
-#else
-import qualified Data.IntMap as IM
-#endif
 import Data.IntMap (IntMap)
 import Data.Sequence (Seq, (<|))
 import qualified Data.Sequence as Seq
@@ -769,15 +757,6 @@ import Data.Time.Clock.POSIX (getPOSIXTime)
 
 #if defined(mingw32_HOST_OS)
 import Data.Word (Word32)
-#endif
-
-#if MIN_VERSION_ghc_prim(0,3,1)
-import GHC.Types (SPEC(..))
-#else
-import GHC.Exts (SpecConstrAnnotation(..))
-
-data SPEC = SPEC | SPEC2
-{-# ANN type SPEC ForceSpecConstr #-}
 #endif
 
 #ifndef MIN_VERSION_tasty
@@ -964,16 +943,12 @@ newtype Benchmarkable =
 -- | 'defaultMain' forces 'setLocaleEncoding' to 'utf8', but users might
 -- be running benchmarks outside of it (e. g., via 'defaultMainWithIngredients').
 supportsUnicode :: Bool
-#if MIN_VERSION_base(4,5,0)
 supportsUnicode = take 3 (textEncodingName enc) == "UTF"
 #if defined(mingw32_HOST_OS)
   && unsafePerformIO getConsoleOutputCP == 65001
 #endif
   where
     enc = unsafePerformIO getLocaleEncoding
-#else
-supportsUnicode = False
-#endif
 {-# NOINLINE supportsUnicode #-}
 
 mu :: Char
@@ -1103,10 +1078,8 @@ predictPerturbed t1 t2 = Estimate
 hasGCStats :: Bool
 #if MIN_VERSION_base(4,10,0)
 hasGCStats = unsafePerformIO getRTSStatsEnabled
-#elif MIN_VERSION_base(4,6,0)
-hasGCStats = unsafePerformIO getGCStatsEnabled
 #else
-hasGCStats = False
+hasGCStats = unsafePerformIO getGCStatsEnabled
 #endif
 
 getAllocsAndCopied :: IO (Word64, Word64, Word64)
@@ -1114,10 +1087,8 @@ getAllocsAndCopied = do
   if not hasGCStats then pure (0, 0, 0) else
 #if MIN_VERSION_base(4,10,0)
     (\s -> (allocated_bytes s, copied_bytes s, max_mem_in_use_bytes s)) <$> getRTSStats
-#elif MIN_VERSION_base(4,6,0)
-    (\s -> (int64ToWord64 $ bytesAllocated s, int64ToWord64 $ bytesCopied s, int64ToWord64 $ peakMegabytesAllocated s * 1024 * 1024)) <$> getGCStats
 #else
-    pure (0, 0, 0)
+    (\s -> (int64ToWord64 $ bytesAllocated s, int64ToWord64 $ bytesCopied s, int64ToWord64 $ peakMegabytesAllocated s * 1024 * 1024)) <$> getGCStats
 #endif
 
 getWallTimeSecs :: IO Double
@@ -1341,9 +1312,7 @@ type Benchmark = TestTree
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
   let act = defaultMain' bs
-#if MIN_VERSION_base(4,5,0)
   setLocaleEncoding utf8
-#endif
 #if defined(mingw32_HOST_OS)
   codePage <- getConsoleOutputCP
   bracket (setConsoleOutputCP 65001) (const $ setConsoleOutputCP codePage) (const act)
@@ -2056,23 +2025,14 @@ forceFail r = r { resultOutcome = Failure TestFailed, resultShortDescription = "
 data Unique a = None | Unique !a | NotUnique
   deriving (Functor)
 
-appendUnique :: Unique a -> Unique a -> Unique a
-appendUnique None a = a
-appendUnique a None = a
-appendUnique _ _ = NotUnique
-
-#if MIN_VERSION_base(4,9,0)
 instance Semigroup (Unique a) where
-  (<>) = appendUnique
-#endif
+  None <> a = a
+  a <> None = a
+  _ <> _ = NotUnique
 
 instance Monoid (Unique a) where
   mempty = None
-#if MIN_VERSION_base(4,9,0)
   mappend = (<>)
-#else
-  mappend = appendUnique
-#endif
 
 modifyConsoleReporter
     :: [OptionDescription]
@@ -2185,7 +2145,7 @@ word64ToInt64 = fromIntegral
 word64ToDouble :: Word64 -> Double
 word64ToDouble = fromIntegral
 
-#if !MIN_VERSION_base(4,10,0) && MIN_VERSION_base(4,6,0)
+#if !MIN_VERSION_base(4,10,0)
 int64ToWord64 :: Int64 -> Word64
 int64ToWord64 = fromIntegral
 #endif
