@@ -810,10 +810,8 @@ type Progress = ()
 -- only once, use command-line option @--stdev@ @Infinity@.
 --
 -- @since 0.2
-newtype RelStDev = RelStDev
-  { unRelStDev :: Double
-  -- ^ @since 0.4
-  } deriving
+newtype RelStDev = RelStDev Double
+  deriving
   ( Eq
   -- ^ @since 0.4
   , Ord

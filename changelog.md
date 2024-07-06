@@ -13,7 +13,6 @@
 * Decomission warning when `--timeout` is absent.
 * Add `instance {Eq,Ord,Num,Fractional} {RelStDev,FailIfSlower,FailIfFaster}`.
 * Add `instance {Eq,Ord} {CsvPath,SvgPath,BaselinePath}`.
-* Add `unRelStDev :: RelStDev -> Double`.
 
 # 0.3.5
 
