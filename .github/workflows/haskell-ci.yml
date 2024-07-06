@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20240608
+# version: 0.19.20240702
 #
-# REGENDATA ("0.19.20240608",["github","tasty-bench.cabal","--haddock-jobs=>=8.2"])
+# REGENDATA ("0.19.20240702",["github","tasty-bench.cabal","--haddock-jobs=>=8.2"])
 #
 name: Haskell-CI
 on:
@@ -38,9 +38,9 @@ jobs:
             compilerVersion: 9.8.2
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.6.5
+          - compiler: ghc-9.6.6
             compilerKind: ghc
-            compilerVersion: 9.6.5
+            compilerVersion: 9.6.6
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.4.8
@@ -98,7 +98,7 @@ jobs:
           curl -sL https://downloads.haskell.org/ghcup/0.1.20.0/x86_64-linux-ghcup-0.1.20.0 > "$HOME/.ghcup/bin/ghcup"
           chmod a+x "$HOME/.ghcup/bin/ghcup"
           "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
-          "$HOME/.ghcup/bin/ghcup" install cabal 3.10.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          "$HOME/.ghcup/bin/ghcup" install cabal 3.12.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
         env:
           HCKIND: ${{ matrix.compilerKind }}
           HCNAME: ${{ matrix.compiler }}
@@ -116,7 +116,7 @@ jobs:
           echo "HC=$HC" >> "$GITHUB_ENV"
           echo "HCPKG=$HCPKG" >> "$GITHUB_ENV"
           echo "HADDOCK=$HADDOCK" >> "$GITHUB_ENV"
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          echo "CABAL=$HOME/.ghcup/bin/cabal-3.12.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
           echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
           echo "ARG_TESTS=--enable-tests" >> "$GITHUB_ENV"
