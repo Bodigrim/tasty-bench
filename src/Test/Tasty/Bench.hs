@@ -648,7 +648,6 @@ command-line options. Here is an example:
 
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -709,7 +708,6 @@ import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force, rnf)
 import Control.Exception (bracket, evaluate)
 import Control.Monad (void, unless, guard, (>=>), when)
-import Data.Data (Typeable)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
 import Data.IORef
@@ -801,7 +799,6 @@ newtype RelStDev = RelStDev Double
   -- ^ @since 0.4
   , Fractional
   -- ^ @since 0.4
-  , Typeable
   )
 
 -- | Whether to measure CPU time or wall-clock time.
@@ -831,7 +828,6 @@ data TimeMode = CpuTime
   -- ^ Measure CPU time.
   | WallTime
   -- ^ Measure wall-clock time.
-  deriving (Typeable)
 
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
@@ -864,7 +860,6 @@ newtype FailIfSlower = FailIfSlower Double
   -- ^ @since 0.4
   , Fractional
   -- ^ @since 0.4
-  , Typeable
   )
 
 instance IsOption FailIfSlower where
@@ -897,7 +892,6 @@ newtype FailIfFaster = FailIfFaster Double
   -- ^ @since 0.4
   , Fractional
   -- ^ @since 0.4
-  , Typeable
   )
 
 instance IsOption FailIfFaster where
@@ -936,7 +930,7 @@ newtype Benchmarkable =
     -- | @since 0.3
     Benchmarkable
   { unBenchmarkable :: Word64 -> IO () -- ^ Run benchmark given number of times.
-  } deriving (Typeable)
+  }
 
 #ifdef MIN_VERSION_tasty
 
@@ -1707,7 +1701,6 @@ newtype CsvPath = CsvPath FilePath
   -- ^ @since 0.4
   , Ord
   -- ^ @since 0.4
-  , Typeable
   )
 
 instance IsOption (Maybe CsvPath) where
@@ -1786,7 +1779,6 @@ newtype SvgPath = SvgPath FilePath
   -- ^ @since 0.4
   , Ord
   -- ^ @since 0.4
-  , Typeable
   )
 
 instance IsOption (Maybe SvgPath) where
@@ -1925,7 +1917,6 @@ newtype BaselinePath = BaselinePath FilePath
   -- ^ @since 0.4
   , Ord
   -- ^ @since 0.4
-  , Typeable
   )
 
 instance IsOption (Maybe BaselinePath) where
