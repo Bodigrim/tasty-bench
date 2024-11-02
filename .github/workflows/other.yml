@@ -52,10 +52,10 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        arch: ['s390x', 'ppc64le', 'armv7', 'aarch64']
+        arch: ['s390x', 'ppc64le', 'armv7', 'aarch64', 'riscv64']
     steps:
     - uses: actions/checkout@v4
-    - uses: uraimo/run-on-arch-action@v2.7.1
+    - uses: uraimo/run-on-arch-action@v2.8.1
       with:
         arch: ${{ matrix.arch }}
         distro: ubuntu_rolling
