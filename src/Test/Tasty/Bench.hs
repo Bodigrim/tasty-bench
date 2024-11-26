@@ -1105,6 +1105,7 @@ measure timeMode n (Benchmarkable act) = do
   (startAllocs, startCopied, startMaxMemInUse) <- getAllocsAndCopied
   act n
   endTime <- getTimePicoSecs'
+  performMinorGC -- perform GC to update RTSStats
   (endAllocs, endCopied, endMaxMemInUse) <- getAllocsAndCopied
   let meas = Measurement
         { measTime   = endTime - startTime
