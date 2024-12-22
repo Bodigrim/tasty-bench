@@ -396,6 +396,13 @@ look for another way to speed up generation of Fibonacci numbers.
   <stdout>: commitBuffer: invalid argument (cannot encode character '\177')
   ```
 
+  or
+
+  ```
+  Uncaught exception ghc-internal:GHC.Internal.IO.Exception.IOException:
+  <stdout>: commitBuffer: invalid argument (cannot encode character '\956')
+  ```
+
   it means that your locale does not support UTF-8. `tasty-bench` makes an effort
   to force locale to UTF-8, but sometimes, when benchmarks are a part of
   a larger application, it's [impossible](https://gitlab.haskell.org/ghc/ghc/-/issues/23606)

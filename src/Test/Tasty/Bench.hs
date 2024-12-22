@@ -366,6 +366,11 @@ another way to speed up generation of Fibonacci numbers.
 
     > <stdout>: commitBuffer: invalid argument (cannot encode character '\177')
 
+    or
+
+    > Uncaught exception ghc-internal:GHC.Internal.IO.Exception.IOException:
+    > <stdout>: commitBuffer: invalid argument (cannot encode character '\956')
+
     it means that your locale does not support UTF-8. @tasty-bench@
     makes an effort to force locale to UTF-8, but sometimes, when
     benchmarks are a part of a larger application, it’s
@@ -706,7 +711,7 @@ import qualified Prelude
 import Control.Applicative
 import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force, rnf)
-import Control.Exception (bracket, evaluate)
+import Control.Exception (bracket, bracket_, evaluate)
 import Control.Monad (void, unless, guard, (>=>), when)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
@@ -1307,12 +1312,22 @@ type Benchmark = TestTree
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
   let act = defaultMain' bs
-  setLocaleEncoding utf8
+  bracketUtf8 act
+
+bracketUtf8 :: IO a -> IO a
+bracketUtf8 act = do
+  prevLocaleEnc <- getLocaleEncoding
 #if defined(mingw32_HOST_OS)
   codePage <- getConsoleOutputCP
-  bracket (setConsoleOutputCP 65001) (const $ setConsoleOutputCP codePage) (const act)
+  bracket_
+    (setLocaleEncoding utf8 >> setConsoleOutputCP 65001)
+    (setLocaleEncoding prevLocaleEnc >> setConsoleOutputCP codePage)
+    act
 #else
-  act
+  bracket_
+    (setLocaleEncoding utf8)
+    (setLocaleEncoding prevLocaleEnc)
+    act
 #endif
 
 defaultMain' :: [Benchmark] -> IO ()
