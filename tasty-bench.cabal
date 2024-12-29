@@ -1,5 +1,5 @@
 name:          tasty-bench
-version:       0.4
+version:       0.4.1
 cabal-version: 1.18
 build-type:    Simple
 license:       MIT

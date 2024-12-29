@@ -1,3 +1,8 @@
+# 0.4.1
+
+* Force GC before collecting `RTSStats`, otherwise measurements are inaccurate.
+* Restore locale encoding after `defaultMain`.
+
 # 0.4
 
 * Switch `nf`, `nfIO` and `nfAppIO` to evaluate outputs to a normal form
