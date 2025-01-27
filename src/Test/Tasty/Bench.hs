@@ -103,7 +103,7 @@ for more examples.
 
 === How to read results?
 
-Running the example above (@cabal@ @bench@ or @stack@ @bench@) results in
+Running the example above (@cabal bench@ or @stack bench@) results in
 the following output:
 
 > All
@@ -189,8 +189,8 @@ indicative and comparative significance.
 === Memory usage
 
 Configuring RTS to collect GC statistics (e. g., via
-@cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-T\'@ or
-@stack@ @bench@ @--ba@ @\'+RTS@ @-T\'@) enables @tasty-bench@ to estimate and
+@cabal bench --benchmark-options \'+RTS -T\'@ or
+@stack bench --ba \'+RTS -T\'@) enables @tasty-bench@ to estimate and
 report memory usage:
 
 > All
@@ -291,9 +291,9 @@ another way to speed up generation of Fibonacci numbers.
 
     A common source of noisiness is garbage collection. Setting a larger
     allocation area (/nursery/) is often a good idea, either via
-    @cabal@ @bench@ @--benchmark-options@ @\'+RTS@ @-A32m\'@ or
-    @stack@ @bench@ @--ba@ @\'+RTS@ @-A32m\'@. Alternatively bake it into
-    @cabal@ file as @ghc-options:@ @\"-with-rtsopts=-A32m\"@.
+    @cabal bench --benchmark-options \'+RTS -A32m\'@ or
+    @stack bench --ba \'+RTS -A32m\'@. Alternatively bake it into
+    @cabal@ file as @ghc-options: \"-with-rtsopts=-A32m\"@.
 
 -   Never compile benchmarks with @-fstatic-argument-transformation@,
     because it breaks a trick we use to force GHC into reevaluation of
@@ -375,8 +375,8 @@ another way to speed up generation of Fibonacci numbers.
     makes an effort to force locale to UTF-8, but sometimes, when
     benchmarks are a part of a larger application, it’s
     <https://gitlab.haskell.org/ghc/ghc/-/issues/23606 impossible> to do
-    so. In such case run @locale@ @-a@ to list available locales and set a
-    UTF-8-capable one (e. g., @export@ @LANG=C.UTF-8@) before starting
+    so. In such case run @locale -a@ to list available locales and set a
+    UTF-8-capable one (e. g., @export LANG=C.UTF-8@) before starting
     benchmarks.
 
 === Isolating interfering benchmarks
@@ -397,7 +397,7 @@ by garbage collector processing this additional amount of live data over
 and over again.
 
 There are several mitigation strategies. First of all, giving garbage
-collector more breathing space by @+RTS@ @-A32m@ (or more) is often good
+collector more breathing space by @+RTS -A32m@ (or more) is often good
 enough.
 
 Further, avoid using top-level bindings to store large test data. Once
@@ -442,7 +442,7 @@ with
 otherwise results could be skewed by intermittent changes in cache-line
 alignment.
 
-Firstly, run @tasty-bench@ with @--csv@ @FILE@ key to dump results to
+Firstly, run @tasty-bench@ with @--csv FILE@ key to dump results to
 @FILE@ in CSV format (it could be a good idea to set smaller @--stdev@,
 if possible):
 
@@ -451,7 +451,7 @@ if possible):
 > All.Fibonacci numbers.tenth,637152,46744
 > All.Fibonacci numbers.twentieth,81369531,3342646
 
-Now modify implementation and rerun benchmarks with @--baseline@ @FILE@
+Now modify implementation and rerun benchmarks with @--baseline FILE@
 key. This produces a report as follows:
 
 > All
@@ -534,10 +534,10 @@ an argument.
 
 === Plotting results
 
-Users can dump results into CSV with @--csv@ @FILE@ and plot them using
+Users can dump results into CSV with @--csv FILE@ and plot them using
 @gnuplot@ or other software. But for convenience there is also a
 built-in quick-and-dirty SVG plotting feature, which can be invoked by
-passing @--svg@ @FILE@. Here is a sample of its output:
+passing @--svg FILE@. Here is a sample of its output:
 
 ![Plotting](example.svg)
 
@@ -615,7 +615,7 @@ Use @--help@ to list all command-line options.
     Whether to measure CPU time (@cpu@, default) or wall-clock time
     (@wall@).
 
-[@+RTS@ @-T@]:
+[@+RTS -T@]:
 
     Estimate and report memory usage.
 

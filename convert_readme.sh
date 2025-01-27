@@ -23,26 +23,6 @@ sed -i '' -E 's/<(.*) tasty documentation>/[@tasty@ documentation](\1)/g' README
 sed -i '' -E 's/vs\../vs. /g' README.haddock
 sed -i '' -E 's/e\.g\./e. g./g' README.haddock
 
-sed -i '' 's/@cabal bench/@cabal@ @bench/g' README.haddock
-sed -i '' 's/@stack bench/@stack@ @bench/g' README.haddock
-sed -i '' 's/@--csv FILE@/@--csv@ @FILE@/g' README.haddock
-sed -i '' 's/@--svg FILE@/@--svg@ @FILE@/g' README.haddock
-sed -i '' 's/@--baseline FILE@/@--baseline@ @FILE@/g' README.haddock
-sed -i '' 's/@+RTS -T@/@+RTS@ @-T@/g' README.haddock
-sed -i '' 's/@+RTS -A32m@/@+RTS@ @-A32m@/g' README.haddock
-sed -i '' 's/@+RTS --nonmoving-gc@/@+RTS@ @--nonmoving-gc@/g' README.haddock
-sed -i '' 's/@locale -a/@locale@ @-a/g' README.haddock
-sed -i '' 's/@export LANG/@export@ @LANG/g' README.haddock
-
-sed -i '' "s/@bench --benchmark-options/@bench@ @--benchmark-options/g" README.haddock
-sed -i '' "s/@bench --ba/@bench@ @--ba/g" README.haddock
-sed -i '' "s/@--benchmark-options \\\\'+RTS/@--benchmark-options@ @\\\\'+RTS/g" README.haddock
-sed -i '' "s/@--ba \\\\'+RTS/@--ba@ @\\\\'+RTS/g" README.haddock
-sed -i '' "s/@\\\\'+RTS -A32m\\\\'/@\\\\'+RTS@ @-A32m\\\\'/g" README.haddock
-sed -i '' "s/@\\\\'+RTS -T\\\\'@/@\\\\'+RTS@ @-T\\\\'@/g" README.haddock
-
-sed -i '' 's/@ghc-options: \\"-with-rtsopts=-A32m\\"@/@ghc-options:@ @\\"-with-rtsopts=-A32m\\"@/g' README.haddock
-
 sed -i '' 's/@localOption (NumThreads 1)@/@localOption@ (@NumThreads@ 1)/g' README.haddock
 sed -i '' 's/@localOption (FailIfSlower 0.10)@/@localOption@ (@FailIfSlower@ 0.10)/g' README.haddock
 sed -i '' 's/@localOption (RelStDev 0.02)@/@localOption@ (@RelStDev@ 0.02)/g' README.haddock
