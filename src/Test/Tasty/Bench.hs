@@ -697,6 +697,11 @@ module Test.Tasty.Bench
   , BaselinePath(..)
   , SvgPath(..)
   , TimeMode(..)
+  , cpuTime
+  , wallTime
+  , mutatorCpuTime
+  , mutatorWallTime
+  , customTime
   -- * Utilities
   , locateBenchmark
   , mapLeafBenchmarks
@@ -830,9 +835,37 @@ newtype RelStDev = RelStDev Double
 --
 -- @since 0.3.2
 data TimeMode = CpuTime
-  -- ^ Measure CPU time.
+  -- ^ Measure CPU time. Same as 'cpuTime'.
   | WallTime
-  -- ^ Measure wall-clock time.
+  -- ^ Measure wall-clock time. Same as 'wallTime'.
+  | CustomTime (IO Word64)
+  -- ^ Custom measurement action, returning time in picoseconds. Same as 'customTime'.
+
+-- | Measure CPU time.
+cpuTime :: TimeMode
+cpuTime = CpuTime
+
+-- | Measure wall-clock time.
+wallTime :: TimeMode
+wallTime = WallTime
+
+-- | Custom measurement action, returning time in picoseconds.
+customTime :: IO Word64 -> TimeMode
+customTime = CustomTime
+
+-- | Total CPU time used by the mutator. This roughly corresponds to 'cpuTime' minus time spent in GC.
+mutatorCpuTime :: TimeMode
+
+-- | Total elapsed time used by the mutator. This roughly corresponds to 'wallTime' minus time spent in GC.
+mutatorWallTime :: TimeMode
+
+#if MIN_VERSION_base(4,10,0)
+mutatorCpuTime = CustomTime $ (1000 *) . fromIntegral . mutator_cpu_ns <$> getRTSStats
+mutatorWallTime = CustomTime $ (1000 *) . fromIntegral . mutator_elapsed_ns <$> getRTSStats
+#else
+mutatorCpuTime = CustomTime $ round . (1e12 *) . mutatorCpuSeconds <$> getGCStats
+mutatorWallTime = CustomTime $ round . (1e12 *) . mutatorWallSeconds <$> getGCStats
+#endif
 
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
@@ -919,9 +952,10 @@ instance IsOption TimeMode where
     _ -> Nothing
   optionName = pure "time-mode"
   optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall\")"
-  showDefaultValue m = Just $ case m of
-    CpuTime -> "cpu"
-    WallTime -> "wall"
+  showDefaultValue m = case m of
+    CpuTime -> Just "cpu"
+    WallTime -> Just "wall"
+    CustomTime _ -> Nothing
 #endif
 
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
@@ -1101,6 +1135,7 @@ getTimePicoSecs :: TimeMode -> IO Word64
 getTimePicoSecs timeMode = case timeMode of
   CpuTime -> fromInteger <$> getCPUTime
   WallTime -> round . (1e12 *) <$> getWallTimeSecs
+  CustomTime getCustomTime -> getCustomTime
 
 measure :: TimeMode -> Word64 -> Benchmarkable -> IO Measurement
 measure timeMode n (Benchmarkable act) = do
