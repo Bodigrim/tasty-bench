@@ -949,9 +949,11 @@ instance IsOption TimeMode where
   parseValue v = case v of
     "cpu" -> Just CpuTime
     "wall" -> Just WallTime
+    "mutcpu" -> Just mutatorCpuTime
+    "mutwall" -> Just mutatorWallTime
     _ -> Nothing
   optionName = pure "time-mode"
-  optionHelp = pure "Whether to measure CPU time (\"cpu\") or wall-clock time (\"wall\")"
+  optionHelp = pure "Whether to measure total CPU time (\"cpu\"), total wall-clock time (\"wall\"), or time spent by the mutator (CPU \"mutcpu\" or wall-clock \"mutwall\")"
   showDefaultValue m = case m of
     CpuTime -> Just "cpu"
     WallTime -> Just "wall"
