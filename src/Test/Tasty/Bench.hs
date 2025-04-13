@@ -674,7 +674,7 @@ module Test.Tasty.Bench
   , envWithCleanup
   ,
 #endif
-  -- * Creating 'Benchmarkable'
+  -- * Creating t'Benchmarkable'
     Benchmarkable(..)
   , nf
   , whnf
@@ -789,7 +789,7 @@ type Progress = ()
 -- > import Test.Tasty (localOption)
 -- > localOption (RelStDev 0.02) (bgroup [...])
 --
--- If you set 'RelStDev' to infinity,
+-- If you set t'RelStDev' to infinity,
 -- a benchmark will be executed
 -- only once and its standard deviation will be recorded as zero.
 -- This is rather a blunt approach, but it might be a necessary evil
@@ -963,8 +963,8 @@ instance IsOption TimeMode where
 -- | Something that can be benchmarked, produced by 'nf', 'whnf', 'nfIO', 'whnfIO',
 -- 'nfAppIO', 'whnfAppIO' below.
 --
--- Drop-in replacement for @Criterion.@'Criterion.Benchmarkable' and
--- @Gauge.@'Gauge.Benchmarkable'.
+-- Drop-in replacement for @Criterion.Benchmarkable@ and
+-- @Gauge.Benchmarkable@.
 --
 -- @since 0.1
 newtype Benchmarkable =
@@ -1207,9 +1207,9 @@ measureUntil yieldProgress timeMode timeout (RelStDev targetRelStDev) b = do
 -- | An internal routine to measure CPU execution time in seconds
 -- for a given timeout (put 'NoTimeout', or 'mkTimeout' 100000000 for 100 seconds)
 -- and a target relative standard deviation
--- (put 'RelStDev' 0.05 for 5% or 'RelStDev' (1/0) to run only one iteration).
+-- (put v'RelStDev' 0.05 for 5% or v'RelStDev' (1/0) to run only one iteration).
 --
--- 'Timeout' takes soft priority over 'RelStDev': this function prefers
+-- t'Timeout' takes soft priority over t'RelStDev': this function prefers
 -- to finish in time even if at cost of precision. However, timeout is guidance
 -- not guarantee: 'measureCpuTime' can take longer, if there is not enough time
 -- to run at least thrice or an iteration takes unusually long.
@@ -1250,11 +1250,11 @@ instance IsTest Benchmarkable where
       pure $ testPassed $ show (WithLoHi est (1 - ifFaster) (1 + ifSlower))
     _ -> pure $ testFailed "Benchmarks must not be run concurrently. Please pass -j1 and/or avoid +RTS -N."
 
--- | Attach a name to 'Benchmarkable'.
+-- | Attach a name to t'Benchmarkable'.
 --
 -- This is actually a synonym of 'Test.Tasty.Providers.singleTest' to
--- provide an interface compatible with @Criterion.@'Criterion.bench'
--- and @Gauge.@'Gauge.bench'.
+-- provide an interface compatible with @Criterion.bench@
+-- and @Gauge.bench@.
 --
 -- @since 0.1
 bench :: String -> Benchmarkable -> Benchmark
@@ -1263,8 +1263,8 @@ bench = singleTest
 -- | Attach a name to a group of 'Benchmark'.
 --
 -- This is actually a synonym of 'Test.Tasty.testGroup' to provide an
--- interface compatible with @Criterion.@'Criterion.bgroup' and
--- @Gauge@.'Gauge.bgroup'.
+-- interface compatible with @Criterion.bgroup@ and
+-- @Gauge.bgroup@.
 --
 -- @since 0.1
 bgroup :: String -> [Benchmark] -> Benchmark
@@ -1335,15 +1335,15 @@ bcomparePrefix = "tasty-bench"
 
 -- | Benchmarks are actually just a regular 'Test.Tasty.TestTree' in disguise.
 --
--- This is a drop-in replacement for @Criterion.@'Criterion.Benchmark'
--- and @Gauge.@'Gauge.Benchmark'.
+-- This is a drop-in replacement for @Criterion.Benchmark@
+-- and @Gauge.Benchmark@.
 --
 -- @since 0.1
 type Benchmark = TestTree
 
 -- | Run benchmarks and report results, providing an interface
--- compatible with @Criterion.@'Criterion.defaultMain' and
--- @Gauge.@'Gauge.defaultMain'.
+-- compatible with @Criterion.defaultMain@ and
+-- @Gauge.defaultMain@.
 --
 -- @since 0.1
 defaultMain :: [Benchmark] -> IO ()
@@ -1466,8 +1466,8 @@ funcToBench frc = (Benchmarkable .) . funcToBenchLoop SPEC
 -- then 'nf' @f@ @x@ is ill-typed, but you can use 'nf' @(\\y -> f y)@ @x@
 -- instead.
 --
--- Drop-in replacement for @Criterion.@'Criterion.nf' and
--- @Gauge.@'Gauge.nf'.
+-- Drop-in replacement for @Criterion.nf@ and
+-- @Gauge.nf@.
 --
 -- @since 0.1
 nf :: NFData b => (a -> b) -> a -> Benchmarkable
@@ -1497,7 +1497,7 @@ nf = funcToBench rnf
 -- This will succeed in a matter of nanoseconds, because weak head
 -- normal form forces only the first element of the list.
 --
--- Drop-in replacement for @Criterion.@'Criterion.whnf' and @Gauge.@'Gauge.whnf'.
+-- Drop-in replacement for @Criterion.whnf@ and @Gauge.whnf@.
 --
 -- @since 0.1
 whnf :: (a -> b) -> a -> Benchmarkable
@@ -1539,7 +1539,7 @@ ioToBench frc act = Benchmarkable (ioToBenchLoop SPEC)
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for @Criterion.@'Criterion.nfIO' and @Gauge.@'Gauge.nfIO'.
+-- Drop-in replacement for @Criterion.nfIO@ and @Gauge.nfIO@.
 --
 -- @since 0.1
 nfIO :: NFData a => IO a -> Benchmarkable
@@ -1568,7 +1568,7 @@ nfIO = ioToBench rnf
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for @Criterion.@'Criterion.whnfIO' and @Gauge.@'Gauge.whnfIO'.
+-- Drop-in replacement for @Criterion.whnfIO@ and @Gauge.whnfIO@.
 --
 -- @since 0.1
 whnfIO :: IO a -> Benchmarkable
@@ -1611,7 +1611,7 @@ ioFuncToBench frc = (Benchmarkable .) . ioFuncToBenchLoop SPEC
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for @Criterion.@'Criterion.nfAppIO' and @Gauge.@'Gauge.nfAppIO'.
+-- Drop-in replacement for @Criterion.nfAppIO@ and @Gauge.nfAppIO@.
 --
 -- @since 0.1
 nfAppIO :: NFData b => (a -> IO b) -> a -> Benchmarkable
@@ -1641,7 +1641,7 @@ nfAppIO = ioFuncToBench rnf
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
--- Drop-in replacement for @Criterion.@'Criterion.whnfAppIO' and @Gauge.@'Gauge.whnfAppIO'.
+-- Drop-in replacement for @Criterion.whnfAppIO@ and @Gauge.whnfAppIO@.
 --
 -- @since 0.1
 whnfAppIO :: (a -> IO b) -> a -> Benchmarkable
@@ -1682,14 +1682,14 @@ whnfAppIO = ioFuncToBench id
 -- or unboxed @Vector@ are good, boxed arrays are worse, lists and trees are bad.
 --
 -- @Test.Tasty.Bench.@'env' is provided only for the sake of
--- compatibility with @Criterion.@'Criterion.env' and
--- @Gauge.@'Gauge.env', and involves 'unsafePerformIO'. Consider using
+-- compatibility with @Criterion.env@ and
+-- @Gauge.env@, and involves 'unsafePerformIO'. Consider using
 -- 'withResource' instead.
 --
 -- When working with a mutable environment, bear in mind that it is threaded
 -- through all iterations of a benchmark. @tasty-bench@ does not roll it back
 -- or reset, it's user's resposibility. You might have better luck
--- with @Criterion.@'Criterion.perBatchEnv' or @Criterion.@'Criterion.perRunEnv'.
+-- with @Criterion.perBatchEnv@ or @Criterion.perRunEnv@.
 --
 -- 'defaultMain' requires that the hierarchy of benchmarks and their names is
 -- independent of underlying 'IO' actions. While executing 'IO' inside 'bench'
@@ -1711,8 +1711,8 @@ env res = envWithCleanup res (const $ pure ())
 -- to clean up created environment.
 --
 -- Provided only for the sake of compatibility with
--- @Criterion.@'Criterion.envWithCleanup' and
--- @Gauge.@'Gauge.envWithCleanup', and involves
+-- @Criterion.envWithCleanup@ and
+-- @Gauge.envWithCleanup@, and involves
 -- 'unsafePerformIO'. Consider using 'withResource' instead.
 --
 -- @since 0.2
