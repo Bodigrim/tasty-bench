@@ -1539,6 +1539,10 @@ ioToBench frc act = Benchmarkable (ioToBenchLoop SPEC)
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
+-- One handy consequence of having access to `IO` is that you can
+-- generate new random inputs for each run using @System.Random.randomIO@
+-- or @System.Random.Stateful.uniformM@ @System.Random.Stateful.globalStdGen@.
+--
 -- Drop-in replacement for @Criterion.nfIO@ and @Gauge.nfIO@.
 --
 -- @since 0.1
@@ -1567,6 +1571,10 @@ nfIO = ioToBench rnf
 -- If your goal is not to benchmark I\/O per se,
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
+--
+-- One handy consequence of having access to `IO` is that you can
+-- generate new random inputs for each run using @System.Random.randomIO@
+-- or @System.Random.Stateful.uniformM@ @System.Random.Stateful.globalStdGen@.
 --
 -- Drop-in replacement for @Criterion.whnfIO@ and @Gauge.whnfIO@.
 --
@@ -1611,6 +1619,10 @@ ioFuncToBench frc = (Benchmarkable .) . ioFuncToBenchLoop SPEC
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
 --
+-- One handy consequence of having access to `IO` is that you can
+-- generate new random inputs for each run using @System.Random.randomIO@
+-- or @System.Random.Stateful.uniformM@ @System.Random.Stateful.globalStdGen@.
+--
 -- Drop-in replacement for @Criterion.nfAppIO@ and @Gauge.nfAppIO@.
 --
 -- @since 0.1
@@ -1640,6 +1652,10 @@ nfAppIO = ioFuncToBench rnf
 -- If your goal is not to benchmark I\/O per se,
 -- but just read input data from a file, it is cleaner to
 -- use 'env' or 'withResource'.
+--
+-- One handy consequence of having access to `IO` is that you can
+-- generate new random inputs for each run using @System.Random.randomIO@
+-- or @System.Random.Stateful.uniformM@ @System.Random.Stateful.globalStdGen@.
 --
 -- Drop-in replacement for @Criterion.whnfAppIO@ and @Gauge.whnfAppIO@.
 --
