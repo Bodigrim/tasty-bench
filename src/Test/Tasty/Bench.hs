@@ -697,11 +697,6 @@ module Test.Tasty.Bench
   , BaselinePath(..)
   , SvgPath(..)
   , TimeMode(..)
-  , cpuTime
-  , wallTime
-  , mutatorCpuTime
-  , mutatorWallTime
-  , customTime
   -- * Utilities
   , locateBenchmark
   , mapLeafBenchmarks
@@ -835,37 +830,21 @@ newtype RelStDev = RelStDev Double
 --
 -- @since 0.3.2
 data TimeMode = CpuTime
-  -- ^ Measure CPU time. Same as 'cpuTime'.
+  -- ^ Measure CPU time.
   | WallTime
-  -- ^ Measure wall-clock time. Same as 'wallTime'.
+  -- ^ Measure wall-clock time.
+  | MutatorCpuTime
+  -- ^ Measure CPU time
+  -- excluding garbage collection, known as "mutator time".
+  --
+  -- @since 0.5
+  | MutatorWallTime
+  -- ^ Measure wall-clock time
+  -- excluding garbage collection, known as "mutator time".
+  --
+  -- @since 0.5
   | CustomTime (IO Word64)
   -- ^ Custom measurement action, returning time in picoseconds. Same as 'customTime'.
-
--- | Measure CPU time.
-cpuTime :: TimeMode
-cpuTime = CpuTime
-
--- | Measure wall-clock time.
-wallTime :: TimeMode
-wallTime = WallTime
-
--- | Custom measurement action, returning time in picoseconds.
-customTime :: IO Word64 -> TimeMode
-customTime = CustomTime
-
--- | Total CPU time used by the mutator. This roughly corresponds to 'cpuTime' minus time spent in GC.
-mutatorCpuTime :: TimeMode
-
--- | Total elapsed time used by the mutator. This roughly corresponds to 'wallTime' minus time spent in GC.
-mutatorWallTime :: TimeMode
-
-#if MIN_VERSION_base(4,10,0)
-mutatorCpuTime = CustomTime $ (1000 *) . fromIntegral . mutator_cpu_ns <$> getRTSStats
-mutatorWallTime = CustomTime $ (1000 *) . fromIntegral . mutator_elapsed_ns <$> getRTSStats
-#else
-mutatorCpuTime = CustomTime $ round . (1e12 *) . mutatorCpuSeconds <$> getGCStats
-mutatorWallTime = CustomTime $ round . (1e12 *) . mutatorWallSeconds <$> getGCStats
-#endif
 
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
@@ -949,14 +928,16 @@ instance IsOption TimeMode where
   parseValue v = case v of
     "cpu" -> Just CpuTime
     "wall" -> Just WallTime
-    "mutcpu" -> Just mutatorCpuTime
-    "mutwall" -> Just mutatorWallTime
+    "mutcpu" -> Just MutatorCpuTime
+    "mutwall" -> Just MutatorWallTime
     _ -> Nothing
   optionName = pure "time-mode"
   optionHelp = pure "Whether to measure total CPU time (\"cpu\"), total wall-clock time (\"wall\"), or time spent by the mutator (CPU \"mutcpu\" or wall-clock \"mutwall\")"
   showDefaultValue m = case m of
     CpuTime -> Just "cpu"
     WallTime -> Just "wall"
+    MutatorCpuTime -> Just "mutcpu"
+    MutatorWallTime -> Just "mutwall"
     CustomTime _ -> Nothing
 #endif
 
@@ -1133,10 +1114,27 @@ getWallTimeSecs = getMonotonicTime
 getWallTimeSecs = realToFrac <$> getPOSIXTime
 #endif
 
+getMutatorCpuTime :: IO Word64
+#if MIN_VERSION_base(4,10,0)
+getMutatorCpuTime = (1000 *) . fromIntegral . mutator_cpu_ns <$> getRTSStats
+#else
+getMutatorCpuTime = round . (1e12 *) . mutatorCpuSeconds <$> getGCStats
+#endif
+
+getMutatorWallTime :: IO Word64
+#if MIN_VERSION_base(4,10,0)
+getMutatorWallTime = (1000 *) . fromIntegral . mutator_elapsed_ns <$> getRTSStats
+#else
+getMutatorWallTime = round . (1e12 *) . mutatorWallSeconds <$> getGCStats
+#endif
+
+
 getTimePicoSecs :: TimeMode -> IO Word64
 getTimePicoSecs timeMode = case timeMode of
   CpuTime -> fromInteger <$> getCPUTime
   WallTime -> round . (1e12 *) <$> getWallTimeSecs
+  MutatorCpuTime -> getMutatorCpuTime
+  MutatorWallTime -> getMutatorWallTime
   CustomTime getCustomTime -> getCustomTime
 
 measure :: TimeMode -> Word64 -> Benchmarkable -> IO Measurement

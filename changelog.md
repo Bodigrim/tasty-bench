@@ -1,3 +1,7 @@
+# 0.5
+
+* Extend `TimeMode` with `MutatorCpuTime`, `MutatorWallTime` and `CustomTime`.
+
 # 0.4.1
 
 * Force GC before collecting `RTSStats`, otherwise measurements are inaccurate.
