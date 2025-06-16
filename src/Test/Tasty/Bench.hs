@@ -372,10 +372,8 @@ another way to speed up generation of Fibonacci numbers.
     > <stdout>: commitBuffer: invalid argument (cannot encode character '\956')
 
     it means that your locale does not support UTF-8. @tasty-bench@
-    makes an effort to force locale to UTF-8, but sometimes, when
-    benchmarks are a part of a larger application, it’s
-    <https://gitlab.haskell.org/ghc/ghc/-/issues/23606 impossible> to do
-    so. In such case run @locale -a@ to list available locales and set a
+    makes an effort to force locale to UTF-8, but it's not bulletproof.
+    In such case run @locale -a@ to list available locales and set a
     UTF-8-capable one (e. g., @export LANG=C.UTF-8@) before starting
     benchmarks.
 
@@ -956,15 +954,15 @@ newtype Benchmarkable =
 
 #ifdef MIN_VERSION_tasty
 
--- | 'defaultMain' forces 'setLocaleEncoding' to 'utf8', but users might
+-- | 'defaultMain' forces encoding to 'utf8', but users might
 -- be running benchmarks outside of it (e. g., via 'defaultMainWithIngredients').
 supportsUnicode :: Bool
-supportsUnicode = take 3 (textEncodingName enc) == "UTF"
+supportsUnicode = maybe False ((== "UTF") . take 3 . textEncodingName) enc
 #if defined(mingw32_HOST_OS)
   && unsafePerformIO getConsoleOutputCP == 65001
 #endif
   where
-    enc = unsafePerformIO getLocaleEncoding
+    enc = unsafePerformIO (hGetEncoding stdout)
 {-# NOINLINE supportsUnicode #-}
 
 mu :: Char
@@ -1351,17 +1349,19 @@ defaultMain bs = do
 
 bracketUtf8 :: IO a -> IO a
 bracketUtf8 act = do
-  prevLocaleEnc <- getLocaleEncoding
+  prevStdoutEnc <- hGetEncoding stdout
 #if defined(mingw32_HOST_OS)
   codePage <- getConsoleOutputCP
   bracket_
-    (setLocaleEncoding utf8 >> setConsoleOutputCP 65001)
-    (setLocaleEncoding prevLocaleEnc >> setConsoleOutputCP codePage)
+    (hSetEncoding stdout utf8
+      >> setConsoleOutputCP 65001)
+    (maybe (hSetBinaryMode stdout True) (hSetEncoding stdout) prevStdoutEnc
+      >> setConsoleOutputCP codePage)
     act
 #else
   bracket_
-    (setLocaleEncoding utf8)
-    (setLocaleEncoding prevLocaleEnc)
+    (hSetEncoding stdout utf8)
+    (maybe (hSetBinaryMode stdout True) (hSetEncoding stdout) prevStdoutEnc)
     act
 #endif
 
