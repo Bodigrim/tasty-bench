@@ -658,6 +658,9 @@ command-line options. Here is an example:
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Unused LANGUAGE pragma" #-}
+
 module Test.Tasty.Bench
   (
 #ifdef MIN_VERSION_tasty
@@ -1095,6 +1098,7 @@ hasGCStats = unsafePerformIO getRTSStatsEnabled
 #else
 hasGCStats = unsafePerformIO getGCStatsEnabled
 #endif
+{-# NOINLINE hasGCStats  #-}
 
 getAllocsAndCopied :: IO (Word64, Word64, Word64)
 getAllocsAndCopied = do
