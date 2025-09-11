@@ -372,7 +372,7 @@ another way to speed up generation of Fibonacci numbers.
     > <stdout>: commitBuffer: invalid argument (cannot encode character '\956')
 
     it means that your locale does not support UTF-8. @tasty-bench@
-    makes an effort to force locale to UTF-8, but it's not bulletproof.
+    makes an effort to force locale to UTF-8, but it’s not bulletproof.
     In such case run @locale -a@ to list available locales and set a
     UTF-8-capable one (e. g., @export LANG=C.UTF-8@) before starting
     benchmarks.
@@ -845,7 +845,7 @@ data TimeMode = CpuTime
   --
   -- @since 0.5
   | CustomTime (IO Word64)
-  -- ^ Custom measurement action, returning time in picoseconds. Same as 'customTime'.
+  -- ^ Custom measurement action, returning time in picoseconds.
 
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
@@ -1450,6 +1450,9 @@ funcToBench frc = (Benchmarkable .) . funcToBenchLoop SPEC
 -- see 'nf' (@\\n@ @->@ @f@ @n@) @x@ instead of 'nf' @f@ @x@.
 -- Same applies to rewrite rules.
 --
+-- If you suspect that GHC overoptimizes / overspecializes the function call @f@,
+-- try defeating it with 'GHC.Exts.noinline' @f@.
+--
 -- While @tasty-bench@ is capable to perform micro- and even nanobenchmarks,
 -- such measurements are noisy and involve an overhead. Results are more reliable
 -- when @f@ @x@ takes at least several milliseconds.
@@ -1529,7 +1532,10 @@ ioToBench frc act = Benchmarkable (ioToBenchLoop SPEC)
 -- with results in nanosecond range.
 --
 -- To avoid surprising results it is usually preferable
--- to use 'nfAppIO' instead.
+-- to use 'nfAppIO' instead. You can also try turning off
+-- let floating by
+-- [@-fno-full-laziness@](https://downloads.haskell.org/ghc/latest/docs/users_guide/using-optimisation.html#ghc-flag-ffull-laziness),
+-- but this is likely to cause more problems than solve.
 --
 -- Remember that forcing a normal form requires an additional
 -- traverse of the structure. In certain scenarios,
@@ -1562,7 +1568,10 @@ nfIO = ioToBench rnf
 -- with results in nanosecond range.
 --
 -- To avoid surprising results it is usually preferable
--- to use 'whnfAppIO' instead.
+-- to use 'whnfAppIO' instead. You can also try turning off
+-- let floating by
+-- [@-fno-full-laziness@](https://downloads.haskell.org/ghc/latest/docs/users_guide/using-optimisation.html#ghc-flag-ffull-laziness),
+-- but this is likely to cause more problems than solve.
 --
 -- Computing only a weak head normal form is
 -- rarely what intuitively is meant by "evaluation".

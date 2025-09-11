@@ -404,9 +404,8 @@ look for another way to speed up generation of Fibonacci numbers.
   ```
 
   it means that your locale does not support UTF-8. `tasty-bench` makes an effort
-  to force locale to UTF-8, but sometimes, when benchmarks are a part of
-  a larger application, it's [impossible](https://gitlab.haskell.org/ghc/ghc/-/issues/23606)
-  to do so. In such case run `locale -a` to list available locales and set a UTF-8-capable
+  to force locale to UTF-8, but it's not bulletproof.
+  In such case run `locale -a` to list available locales and set a UTF-8-capable
   one (e. g., `export LANG=C.UTF-8`) before starting benchmarks.
 
 ## Isolating interfering benchmarks

@@ -1,6 +1,7 @@
 # 0.5
 
 * Extend `TimeMode` with `MutatorCpuTime`, `MutatorWallTime` and `CustomTime`.
+* Use a more robust strategy to force encoding to UTF-8.
 
 # 0.4.1
 
