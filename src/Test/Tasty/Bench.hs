@@ -648,7 +648,6 @@ command-line options. Here is an example:
 > benchmarks = bgroup "All" []
 
 -}
-
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}

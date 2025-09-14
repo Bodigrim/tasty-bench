@@ -11,7 +11,7 @@ License:     MIT
 xit
 eof
 
-echo "\n-}\n" >> README.haddock
+printf '\n-}\n' >> README.haddock
 
 sed -i '' '/^= /d' README.haddock
 sed -i '' '/^#/d' README.haddock
