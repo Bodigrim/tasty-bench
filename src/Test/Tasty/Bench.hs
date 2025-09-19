@@ -1344,6 +1344,10 @@ type Benchmark = TestTree
 -- compatible with @Criterion.defaultMain@ and
 -- @Gauge.defaultMain@.
 --
+-- An unfortunate consequence of being a drop-in replacement for @criterion@
+-- and @gauge@ is that this function diverges from @tasty@,
+-- where 'Test.Tasty.defaultMain' takes a single input, not a list of inputs.
+--
 -- @since 0.1
 defaultMain :: [Benchmark] -> IO ()
 defaultMain bs = do
