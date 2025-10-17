@@ -725,7 +725,11 @@ import Data.Word (Word64)
 import GHC.Conc
 import GHC.IO.Encoding
 import GHC.Stats
+#if MIN_VERSION_base(4,15,0)
+import GHC.Exts (SPEC(..))
+#else
 import GHC.Types (SPEC(..))
+#endif
 import System.CPUTime
 import System.Exit
 import System.IO
