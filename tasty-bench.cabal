@@ -45,7 +45,7 @@ library
   ghc-options:      -O2 -Wall -fno-warn-unused-imports -Wcompat -Widentities
 
   build-depends:
-    base >= 4.3 && < 5,
+    base >= 4.9 && < 5,
     deepseq >= 1.1 && < 1.6,
     ghc-prim < 0.14
   if flag(tasty)
