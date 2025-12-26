@@ -651,15 +651,16 @@ command-line options. Here is an example:
 -}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Unused LANGUAGE pragma" #-}
+{- HLINT ignore "Unused LANGUAGE pragma" -}
 
 module Test.Tasty.Bench
   (
@@ -714,6 +715,7 @@ import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force, rnf)
 import Control.Exception (bracket, bracket_, evaluate)
 import Control.Monad (void, unless, guard, (>=>), when)
+import Data.Data (Data)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
 import Data.IORef
@@ -724,6 +726,7 @@ import Data.Proxy
 import Data.Traversable (forM)
 import Data.Word (Word64)
 import GHC.Conc
+import GHC.Generics (Generic)
 import GHC.IO.Encoding
 import GHC.Stats
 #if MIN_VERSION_base(4,15,0)
@@ -809,6 +812,10 @@ newtype RelStDev = RelStDev Double
   -- ^ @since 0.4
   , Fractional
   -- ^ @since 0.4
+  , Generic
+  -- ^ @since 0.5
+  , Data
+  -- ^ @since 0.5
   )
 
 -- | Whether to measure CPU time or wall-clock time.
@@ -850,6 +857,10 @@ data TimeMode = CpuTime
   -- @since 0.5
   | CustomTime (IO Word64)
   -- ^ Custom measurement action, returning time in picoseconds.
+  deriving
+  ( Generic
+  -- ^ @since 0.5
+  )
 
 #ifdef MIN_VERSION_tasty
 instance IsOption RelStDev where
@@ -882,6 +893,10 @@ newtype FailIfSlower = FailIfSlower Double
   -- ^ @since 0.4
   , Fractional
   -- ^ @since 0.4
+  , Generic
+  -- ^ @since 0.5
+  , Data
+  -- ^ @since 0.5
   )
 
 instance IsOption FailIfSlower where
@@ -914,6 +929,10 @@ newtype FailIfFaster = FailIfFaster Double
   -- ^ @since 0.4
   , Fractional
   -- ^ @since 0.4
+  , Generic
+  -- ^ @since 0.5
+  , Data
+  -- ^ @since 0.5
   )
 
 instance IsOption FailIfFaster where
@@ -958,6 +977,10 @@ newtype Benchmarkable =
     Benchmarkable
   { unBenchmarkable :: Word64 -> IO () -- ^ Run benchmark given number of times.
   }
+  deriving
+  ( Generic
+  -- ^ @since 0.5
+  )
 
 #ifdef MIN_VERSION_tasty
 
@@ -1794,6 +1817,10 @@ newtype CsvPath = CsvPath FilePath
   -- ^ @since 0.4
   , Ord
   -- ^ @since 0.4
+  , Generic
+  -- ^ @since 0.5
+  , Data
+  -- ^ @since 0.5
   )
 
 instance IsOption (Maybe CsvPath) where
@@ -1872,6 +1899,10 @@ newtype SvgPath = SvgPath FilePath
   -- ^ @since 0.4
   , Ord
   -- ^ @since 0.4
+  , Generic
+  -- ^ @since 0.5
+  , Data
+  -- ^ @since 0.5
   )
 
 instance IsOption (Maybe SvgPath) where
@@ -2010,6 +2041,10 @@ newtype BaselinePath = BaselinePath FilePath
   -- ^ @since 0.4
   , Ord
   -- ^ @since 0.4
+  , Generic
+  -- ^ @since 0.5
+  , Data
+  -- ^ @since 0.5
   )
 
 instance IsOption (Maybe BaselinePath) where

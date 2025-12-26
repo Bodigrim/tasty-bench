@@ -2,6 +2,7 @@
 
 * Extend `TimeMode` with `MutatorCpuTime`, `MutatorWallTime` and `CustomTime`.
 * Use a more robust strategy to force encoding to UTF-8.
+* Add `Generic` and `Data` instances.
 
 # 0.4.1
 
