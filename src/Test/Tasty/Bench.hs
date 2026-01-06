@@ -650,6 +650,7 @@ command-line options. Here is an example:
 
 -}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -2272,14 +2273,8 @@ int64ToWord64 = fromIntegral
 
 #if defined(mingw32_HOST_OS)
 
-#if defined(i386_HOST_ARCH)
-#define CCONV stdcall
-#else
-#define CCONV ccall
-#endif
-
-foreign import CCONV unsafe "windows.h GetConsoleOutputCP" getConsoleOutputCP :: IO Word32
-foreign import CCONV unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP :: Word32 -> IO ()
+foreign import capi unsafe "windows.h GetConsoleOutputCP" getConsoleOutputCP :: IO Word32
+foreign import capi unsafe "windows.h SetConsoleOutputCP" setConsoleOutputCP :: Word32 -> IO ()
 
 #endif
 
