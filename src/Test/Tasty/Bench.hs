@@ -671,6 +671,7 @@ module Test.Tasty.Bench
   , Benchmark
   , bench
   , bgroup
+  , benchWith
   , bcompare
   , bcompareWithin
   , env
@@ -1261,14 +1262,7 @@ measureCpuTimeAndStDev
 #ifdef MIN_VERSION_tasty
 
 instance IsTest Benchmarkable where
-  testOptions = pure
-    [ Option (Proxy :: Proxy RelStDev)
-    -- FailIfSlower and FailIfFaster must be options of a test provider rather
-    -- than options of an ingredient to allow setting them on per-test level.
-    , Option (Proxy :: Proxy FailIfSlower)
-    , Option (Proxy :: Proxy FailIfFaster)
-    , Option (Proxy :: Proxy TimeMode)
-    ]
+  testOptions = pure benchOptions
   run opts b yieldProgress = case getNumThreads (lookupOption opts) of
     1 -> do
       let timeMode = lookupOption opts
@@ -1277,6 +1271,16 @@ instance IsTest Benchmarkable where
           FailIfFaster ifFaster = lookupOption opts
       pure $ testPassed $ show (WithLoHi est (1 - ifFaster) (1 + ifSlower))
     _ -> pure $ testFailed "Benchmarks must not be run concurrently. Please pass -j1 and/or avoid +RTS -N."
+
+benchOptions :: [OptionDescription]
+benchOptions =
+    [ Option (Proxy :: Proxy RelStDev)
+    -- FailIfSlower and FailIfFaster must be options of a test provider rather
+    -- than options of an ingredient to allow setting them on per-test level.
+    , Option (Proxy :: Proxy FailIfSlower)
+    , Option (Proxy :: Proxy FailIfFaster)
+    , Option (Proxy :: Proxy TimeMode)
+    ]
 
 -- | Attach a name to t'Benchmarkable'.
 --
@@ -1297,6 +1301,67 @@ bench = singleTest
 -- @since 0.1
 bgroup :: String -> [Benchmark] -> Benchmark
 bgroup = testGroup
+
+-- | Run a t'Benchmarkable' inside some larger action.
+--
+-- Prefer using 'env' or 'withResource' to avoid benchmarking setup/teardown code.
+-- But this isn't always possible, like when using a library that only
+-- exposes resources through `bracket`-style continuation passing.
+-- Imagine an alternate reality where 'withBinaryFile' can not be
+-- split into 'openFile' and 'hClose':
+--
+-- > -- Broken:
+-- > withResource
+-- >     (withBinaryFile "NO.txt" WriteMode $ pure)
+-- >     (pure . const ())
+-- >     benchmarkWrites
+--
+-- This benchmarks writes to a closed file handle, which will not go well.
+-- Instead, @benchWith@ allows you to embed a t'Benchmarkable' inside your context.
+-- As a trivial example,
+--
+-- > main :: IO ()
+-- > main = defaultMain
+-- >   [ benchWith "write syscall" $ benchmarkWrites ]
+-- >
+-- > benchmarkWrites :: (Benchmarkable -> IO ()) -> IO ()
+-- > benchmarkWrites runBenchmark = withBinaryFile "/dev/null" WriteMode $ \fh -> do
+-- >     hSetBuffering fh NoBuffering
+-- >     runBenchmark $ whnfAppIO putHello fh
+-- >     -- equivalently,
+-- >     -- runBenchmark $ whnfIO (putHello fh)
+-- >
+-- > putHello :: Handle -> IO ()
+-- > putHello h = hPutStrLn h "hi"
+--
+-- Calling the runner more than once is unspecified behavior.
+-- Create a separate 'Benchmark' instead.
+--
+-- @since 0.6
+benchWith :: String -> ((Benchmarkable -> IO ()) -> IO ()) -> Benchmark
+benchWith name = singleTest name . BenchmarkableWith
+
+-- | @since 0.6
+newtype BenchmarkableWith = BenchmarkableWith
+  { unBenchmarkableWith :: (Benchmarkable -> IO ()) -> IO ()
+  }
+  deriving
+  ( Generic
+  )
+
+instance IsTest BenchmarkableWith where
+  testOptions = pure benchOptions
+  run opts (BenchmarkableWith bracketedBenchmark) yieldProgress = do
+    rr <- newIORef Nothing
+    let run' :: Benchmarkable -> IO ()
+        run' b = do
+            r <- run opts b yieldProgress
+            writeIORef rr $ Just r
+    bracketedBenchmark run'
+    maybeRes <- readIORef rr
+    pure $ case maybeRes of
+        Nothing -> testFailed "Provided action didn't run a Benchmarkable"
+        Just r -> r
 
 -- | Compare benchmarks, reporting relative speed up or slow down.
 --
