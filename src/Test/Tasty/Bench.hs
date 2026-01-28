@@ -716,7 +716,7 @@ import Control.Applicative
 import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force, rnf)
 import Control.Exception (bracket, bracket_, evaluate)
-import Control.Monad (void, unless, guard, (>=>), when)
+import Control.Monad (void, unless, guard, join, (>=>), when)
 import Data.Data (Data)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
@@ -1356,7 +1356,9 @@ instance IsTest BenchmarkableWith where
     let run' :: Benchmarkable -> IO ()
         run' b = do
             r <- run opts b yieldProgress
-            writeIORef rr $ Just r
+            join . atomicModifyIORef' rr $ \prev -> case prev of
+                Nothing -> (Just r, pure ())
+                p -> (p, error "Benchmarkable called multiple times")
     bracketedBenchmark run'
     maybeRes <- readIORef rr
     pure $ case maybeRes of
