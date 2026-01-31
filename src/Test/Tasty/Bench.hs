@@ -1354,10 +1354,16 @@ bcompare = bcompareWithin (-1/0) (1/0)
 --
 -- @since 0.3.1
 bcompareWithin
-  :: Double    -- ^ Lower bound of relative speed up.
-  -> Double    -- ^ Upper bound of relative speed up.
-  -> String    -- ^ @tasty@ pattern to locate a baseline benchmark.
-  -> Benchmark -- ^ Benchmark to compare against baseline.
+  :: Double
+  -- ^ Lower bound of relative speed up.
+  -> Double
+  -- ^ Upper bound of relative speed up.
+  -> String
+  -- ^ @tasty@ pattern, which must unambiguously
+  -- match a unique baseline benchmark. Consider using 'locateBenchmark' to construct it.
+  -> Benchmark
+  -- ^ Benchmark
+  -- to be compared against the baseline benchmark by dividing measured mean times.
   -> Benchmark
 bcompareWithin lo hi s = case parseExpr s of
   Nothing -> error $ "Could not parse bcompare pattern " ++ s
