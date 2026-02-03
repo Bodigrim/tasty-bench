@@ -46,7 +46,8 @@ library
 
   build-depends:
     base >= 4.9 && < 5,
-    deepseq >= 1.1 && < 1.6
+    deepseq >= 1.1 && < 1.6,
+    transformers >= 0.4 && < 0.7
   if impl(ghc < 9.0)
     build-depends:
       ghc-prim < 0.14

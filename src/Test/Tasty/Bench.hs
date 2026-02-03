@@ -671,7 +671,7 @@ module Test.Tasty.Bench
   , Benchmark
   , bench
   , bgroup
-  , benchWith
+  , benchCont
   , bcompare
   , bcompareWithin
   , env
@@ -717,6 +717,7 @@ import Control.Arrow (first, second)
 import Control.DeepSeq (NFData, force, rnf)
 import Control.Exception (bracket, bracket_, evaluate)
 import Control.Monad (void, unless, guard, join, (>=>), when)
+import Control.Monad.Trans.Cont
 import Data.Data (Data)
 import Data.Foldable (foldMap, traverse_)
 import Data.Int (Int64)
@@ -1317,12 +1318,12 @@ bgroup = testGroup
 -- >     benchmarkWrites
 --
 -- This benchmarks writes to a closed file handle, which will not go well.
--- Instead, @benchWith@ allows you to embed a t'Benchmarkable' inside your context.
--- As a trivial example,
+-- Instead, @benchCont@ allows you to embed a t'Benchmarkable'
+-- in a continuation. As a trivial example,
 --
 -- > main :: IO ()
 -- > main = defaultMain
--- >   [ benchWith "write syscall" $ benchmarkWrites ]
+-- >   [ benchCont "write syscall" $ ContT benchmarkWrites ]
 -- >
 -- > benchmarkWrites :: (Benchmarkable -> IO ()) -> IO ()
 -- > benchmarkWrites runBenchmark = withBinaryFile "/dev/null" WriteMode $ \fh -> do
@@ -1338,20 +1339,12 @@ bgroup = testGroup
 -- Create a separate 'Benchmark' instead.
 --
 -- @since 0.6
-benchWith :: String -> ((Benchmarkable -> IO ()) -> IO ()) -> Benchmark
-benchWith name = singleTest name . BenchmarkableWith
+benchCont :: String -> ContT () IO Benchmarkable -> Benchmark
+benchCont = singleTest
 
--- | @since 0.6
-newtype BenchmarkableWith = BenchmarkableWith
-  { unBenchmarkableWith :: (Benchmarkable -> IO ()) -> IO ()
-  }
-  deriving
-  ( Generic
-  )
-
-instance IsTest BenchmarkableWith where
+instance IsTest (ContT () IO Benchmarkable) where
   testOptions = pure benchOptions
-  run opts (BenchmarkableWith bracketedBenchmark) yieldProgress = do
+  run opts (ContT bracketedBenchmark) yieldProgress = do
     rr <- newIORef Nothing
     let run' :: Benchmarkable -> IO ()
         run' b = do
@@ -1362,7 +1355,7 @@ instance IsTest BenchmarkableWith where
     bracketedBenchmark run'
     maybeRes <- readIORef rr
     pure $ case maybeRes of
-        Nothing -> testFailed "Provided action didn't run a Benchmarkable"
+        Nothing -> testFailed "Provided ContT didn't run the passed Benchmarkable"
         Just r -> r
 
 -- | Compare benchmarks, reporting relative speed up or slow down.
