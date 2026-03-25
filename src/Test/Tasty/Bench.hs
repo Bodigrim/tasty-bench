@@ -1342,6 +1342,7 @@ bgroup = testGroup
 benchCont :: String -> ContT () IO Benchmarkable -> Benchmark
 benchCont = singleTest
 
+#if !MIN_VERSION_tasty(1,5,4)
 instance IsTest (ContT () IO Benchmarkable) where
   testOptions = pure benchOptions
   run opts (ContT bracketedBenchmark) yieldProgress = do
@@ -1357,6 +1358,7 @@ instance IsTest (ContT () IO Benchmarkable) where
     pure $ case maybeRes of
         Nothing -> testFailed "Provided ContT didn't run the passed Benchmarkable"
         Just r -> r
+#endif
 
 -- | Compare benchmarks, reporting relative speed up or slow down.
 --
