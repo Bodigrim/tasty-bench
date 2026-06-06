@@ -2,6 +2,8 @@ name: other
 on:
   - push
   - pull_request
+  - merge_group
+  - workflow_dispatch
 
 defaults:
   run:
@@ -112,3 +114,48 @@ jobs:
     - name: Build
       run: |
         wasm32-wasi-cabal build all
+
+  freebsd:
+    name: FreeBSD
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v5
+    - name: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        prepare: pkg install -y ghc hs-cabal-install
+        run: |
+          cabal update
+          cabal build all --enable-tests --enable-benchmarks
+
+  openbsd:
+    name: OpenBSD
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v5
+    - name: test
+      uses: vmactions/openbsd-vm@v1
+      with:
+        prepare: pkg_add ghc cabal-install
+        run: |
+          mkdir -p /home/cabal
+          ln -s /home/cabal $HOME/.cabal
+          cabal update
+          cabal build all --enable-tests --enable-benchmarks
+
+  netbsd:
+    name: NetBSD
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v5
+    - name: test
+      uses: vmactions/netbsd-vm@v1
+      with:
+        prepare: /usr/sbin/pkg_add ghc cabal-install
+        run: |
+          cd $GITHUB_WORKSPACE;
+          cabal update
+          cabal build all --enable-tests --enable-benchmarks
