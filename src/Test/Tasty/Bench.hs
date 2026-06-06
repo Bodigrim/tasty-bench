@@ -1118,9 +1118,18 @@ predictPerturbed t1 t2 = Estimate
     (estStdev (predict (hi t1) (lo t2)))
   }
   where
-    prec = max (fromInteger cpuTimePrecision) 1000000000 -- 1 ms
+    prec = max (fromInteger cpuTimePrecision') 1000000000 -- 1 ms
     hi meas = meas { measTime = measTime meas + prec }
     lo meas = meas { measTime = if measTime meas > prec then measTime meas - prec else 0 }
+
+#ifdef netbsd_HOST_OS
+-- cpuTimePrecision seems to fail on NetBSD
+cpuTimePrecision' :: Prelude.Integer
+cpuTimePrecision' = 0
+#else
+cpuTimePrecision' :: Prelude.Integer
+cpuTimePrecision' = cpuTimePrecision
+#endif
 
 hasGCStats :: Bool
 #if MIN_VERSION_base(4,10,0)
