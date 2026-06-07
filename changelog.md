@@ -1,3 +1,10 @@
+# 0.5.1
+
+* Add `benchCont` combinator.
+* Set default timeout to 100 seconds.
+* Use CAPI for foreign calls on Windows.
+* Workaround `+cpuTimePrecision` on NetBSD.
+
 # 0.5
 
 * Extend `TimeMode` with `MutatorCpuTime`, `MutatorWallTime` and `CustomTime`.

@@ -1326,7 +1326,7 @@ bgroup = testGroup
 -- >     (pure . const ())
 -- >     benchmarkWrites
 --
--- This benchmarks writes to a closed file handle, which will not go well.
+-- This benchmark writes to a closed file handle, which will not go well.
 -- Instead, @benchCont@ allows you to embed a t'Benchmarkable'
 -- in a continuation. As a trivial example,
 --
@@ -1347,7 +1347,7 @@ bgroup = testGroup
 -- Calling the runner more than once is unspecified behavior.
 -- Create a separate 'Benchmark' instead.
 --
--- @since 0.6
+-- @since 0.5.1
 benchCont :: String -> ContT () IO Benchmarkable -> Benchmark
 benchCont = singleTest
 
