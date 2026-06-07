@@ -1465,6 +1465,11 @@ defaultMain bs = do
   let act = defaultMain' bs
   bracketUtf8 act
 
+withDefaultTimeout :: TestTree -> TestTree
+withDefaultTimeout = adjustOption $ \opt -> case opt of
+  Timeout{} -> opt
+  NoTimeout -> mkTimeout 100000000
+
 bracketUtf8 :: IO a -> IO a
 bracketUtf8 act = do
   prevStdoutEnc <- hGetEncoding stdout
@@ -1486,7 +1491,7 @@ bracketUtf8 act = do
 defaultMain' :: [Benchmark] -> IO ()
 defaultMain' bs  = do
   installSignalHandlers
-  let b = testGroup "All" bs
+  let b = withDefaultTimeout $ testGroup "All" bs
   opts <- parseOptions benchIngredients b
   let opts' = setOption (NumThreads 1) opts
 #if MIN_VERSION_tasty(1,5,0)
