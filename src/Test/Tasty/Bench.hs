@@ -1494,11 +1494,7 @@ defaultMain' bs  = do
   let b = withDefaultTimeout $ testGroup "All" bs
   opts <- parseOptions benchIngredients b
   let opts' = setOption (NumThreads 1) opts
-#if MIN_VERSION_tasty(1,5,0)
       opts'' = setOption (MinDurationToReport 1000000000000) opts'
-#else
-      opts'' = opts'
-#endif
   case tryIngredients benchIngredients opts'' b of
     Nothing -> exitFailure
     Just act -> act >>= \x -> if x then exitSuccess else exitFailure
@@ -2259,21 +2255,13 @@ modifyConsoleReporter desc' iof = TestReporter (desc ++ desc') $ \opts tree ->
 testNameSeqs :: OptionSet -> TestTree -> [Seq TestName]
 testNameSeqs = foldTestTree trivialFold
   { foldSingle = const $ const . (:[]) . Seq.singleton
-#if MIN_VERSION_tasty(1,5,0)
   , foldGroup  = const $ (. concat) . map . (<|)
-#else
-  , foldGroup  = const $ map . (<|)
-#endif
   }
 
 testNamesAndDeps :: IntMap (Seq TestName) -> OptionSet -> TestTree -> [(TestName, Unique (WithLoHi IM.Key))]
 testNamesAndDeps im = foldTestTree trivialFold
   { foldSingle = const $ const . (: []) . (, mempty)
-#if MIN_VERSION_tasty(1,5,0)
   , foldGroup  = const $ (. concat) . map . first . (++) . (++ ".")
-#else
-  , foldGroup  = const $ map . first . (++) . (++ ".")
-#endif
   , foldAfter  = const foldDeps
   }
   where
@@ -2319,7 +2307,6 @@ postprocessResult f src = do
 
                     writeTVar oldTV (Done (f name depRes res))
                     pure (Any True, All True)
-#if MIN_VERSION_tasty(1,5,0)
                   Executing newProgr -> do
                     let updated = case old of
                           Executing oldProgr -> oldProgr /= newProgr
@@ -2327,9 +2314,6 @@ postprocessResult f src = do
                     when updated $
                       writeTVar oldTV (Executing newProgr)
                     pure (Any updated, All False)
-#else
-                  Executing{} -> pure (Any False, All False)
-#endif
                   NotStarted -> pure (Any False, All False)
         if anyUpdated || allDone then pure allDone else retry
       adNauseam = doUpdate >>= (`unless` adNauseam)
