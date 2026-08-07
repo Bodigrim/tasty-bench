@@ -660,7 +660,7 @@ command-line options. Here is an example:
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-
+{- HLINT ignore "Missing NOINLINE pragma" -}
 {- HLINT ignore "Unused LANGUAGE pragma" -}
 
 module Test.Tasty.Bench
@@ -996,7 +996,7 @@ supportsUnicode = maybe False ((== "UTF") . take 3 . textEncodingName) enc
 #endif
   where
     enc = unsafePerformIO (hGetEncoding stdout)
-{-# NOINLINE supportsUnicode #-}
+{-# OPAQUE supportsUnicode #-}
 
 mu :: Char
 mu = if supportsUnicode then 'μ' else 'u'
@@ -1137,7 +1137,7 @@ hasGCStats = unsafePerformIO getRTSStatsEnabled
 #else
 hasGCStats = unsafePerformIO getGCStatsEnabled
 #endif
-{-# NOINLINE hasGCStats  #-}
+{-# OPAQUE hasGCStats #-}
 
 getAllocsAndCopied :: IO (Word64, Word64, Word64)
 getAllocsAndCopied = do
